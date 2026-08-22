@@ -49,6 +49,38 @@ class RestaurantRepository {
     return _restaurantsFromSnapshot(snapshot);
   }
 
+  /// 依收藏清單讀取目前仍公開的完整店家資料。
+  Future<List<Restaurant>> getRestaurantsByIds(Iterable<String> ids) async {
+    final uniqueIds = ids.toSet().toList(growable: false);
+    if (uniqueIds.isEmpty) return const [];
+
+    final snapshots = <QuerySnapshot<Map<String, dynamic>>>[];
+    for (var index = 0; index < uniqueIds.length; index += 30) {
+      final end = (index + 30).clamp(0, uniqueIds.length);
+      snapshots.add(
+        await _firestore
+            .collection('restaurants')
+            .where('status', isEqualTo: 'active')
+            .where(FieldPath.documentId, whereIn: uniqueIds.sublist(index, end))
+            .get(),
+      );
+    }
+
+    final restaurantsById = <String, Restaurant>{};
+    for (final snapshot in snapshots) {
+      for (final document in snapshot.docs) {
+        restaurantsById[document.id] = Restaurant.fromMap(
+          document.id,
+          document.data(),
+        );
+      }
+    }
+    return uniqueIds
+        .map((id) => restaurantsById[id])
+        .whereType<Restaurant>()
+        .toList(growable: false);
+  }
+
   Future<NearbySearchResult> findNearbyRestaurants(
     NearbyRestaurantQuery nearbyQuery,
   ) async {
@@ -208,14 +240,16 @@ class RestaurantSearchQuery {
   /// 名稱規則與 Firestore 的前綴搜尋相同，避免快取結果與原查詢行為不同。
   List<Restaurant> filterCatalog(Iterable<Restaurant> restaurants) {
     final normalizedQuery = normalized();
-    final matches = restaurants.where((restaurant) {
-      final category = normalizedQuery.category;
-      if (category != null && !restaurant.categories.contains(category)) {
-        return false;
-      }
-      return normalizedQuery.keyword.isEmpty ||
-          restaurant.nameLower.startsWith(normalizedQuery.keyword);
-    }).toList(growable: false);
+    final matches = restaurants
+        .where((restaurant) {
+          final category = normalizedQuery.category;
+          if (category != null && !restaurant.categories.contains(category)) {
+            return false;
+          }
+          return normalizedQuery.keyword.isEmpty ||
+              restaurant.nameLower.startsWith(normalizedQuery.keyword);
+        })
+        .toList(growable: false);
 
     if (normalizedQuery.keyword.isEmpty) {
       return matches.take(normalizedQuery.limit).toList(growable: false);

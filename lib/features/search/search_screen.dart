@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/constants/food_categories.dart';
 import '../../core/services/external_navigation_service.dart';
+import '../../core/utils/geo_utils.dart';
+import '../../data/providers/auth_providers.dart';
+import '../../data/providers/favorite_providers.dart';
 import '../../data/models/location_result.dart';
 import '../../data/models/nearby_restaurant.dart';
 import '../../data/models/restaurant.dart';
@@ -12,7 +15,7 @@ import '../../data/providers/restaurant_providers.dart';
 import '../../data/repositories/restaurant_repository.dart';
 import '../restaurant/restaurant_card.dart';
 
-enum _SearchMode { keyword, nearby }
+enum _SearchMode { keyword, nearby, favorite }
 
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
@@ -29,6 +32,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   RestaurantSearchQuery _query = const RestaurantSearchQuery();
   _SearchMode _mode = _SearchMode.keyword;
   double _nearbyRadiusKm = 10;
+  bool _favoriteNearbyEnabled = false;
   bool _hasKeywordSearch = false;
 
   @override
@@ -79,6 +83,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   icon: Icon(Icons.near_me_outlined),
                   label: Text('附近'),
                 ),
+                ButtonSegment(
+                  value: _SearchMode.favorite,
+                  icon: Icon(Icons.favorite_border),
+                  label: Text('我的最愛'),
+                ),
               ],
               selected: {_mode},
               onSelectionChanged: (selection) {
@@ -117,6 +126,55 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 ),
               ),
             ),
+          if (_mode == _SearchMode.favorite)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: (value) => _search(),
+                      decoration: InputDecoration(
+                        hintText: '搜尋我的最愛',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: IconButton(
+                          tooltip: '搜尋',
+                          onPressed: _search,
+                          icon: const Icon(Icons.arrow_forward),
+                        ),
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    onPressed: () => setState(
+                      () => _favoriteNearbyEnabled = !_favoriteNearbyEnabled,
+                    ),
+                    icon: Icon(
+                      _favoriteNearbyEnabled
+                          ? Icons.near_me
+                          : Icons.near_me_outlined,
+                    ),
+                    label: Text(_favoriteNearbyEnabled ? '附近最愛' : '附近篩選'),
+                  ),
+                ],
+              ),
+            ),
+          if (_mode == _SearchMode.favorite && _favoriteNearbyEnabled)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: _selectNearbyRadius,
+                  icon: const Icon(Icons.tune_outlined),
+                  label: Text('篩選範圍：${_nearbyRadiusKm.toInt()} 公里'),
+                ),
+              ),
+            ),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -142,9 +200,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             ),
           ),
           Expanded(
-            child: _mode == _SearchMode.keyword
-                ? _buildKeywordResults()
-                : _buildNearbyResults(),
+            child: switch (_mode) {
+              _SearchMode.keyword => _buildKeywordResults(),
+              _SearchMode.nearby => _buildNearbyResults(),
+              _SearchMode.favorite => _buildFavoriteResults(),
+            },
           ),
         ],
       ),
@@ -168,14 +228,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final searchCatalog = ref.watch(searchCatalogProvider);
     return searchCatalog.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stackTrace) => _SearchError(
-        onRetry: () => ref.invalidate(searchCatalogProvider),
-      ),
+      error: (error, stackTrace) =>
+          _SearchError(onRetry: () => ref.invalidate(searchCatalogProvider)),
       data: (catalog) {
         final items = _query.filterCatalog(catalog);
         return items.isEmpty
-          ? const Center(child: Text('找不到符合條件的店家。'))
-          : _SearchResults(restaurants: items);
+            ? const Center(child: Text('找不到符合條件的店家。'))
+            : _SearchResults(restaurants: items);
       },
     );
   }
@@ -224,6 +283,94 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             ],
           ),
         );
+      },
+    );
+  }
+
+  Widget _buildFavoriteResults() {
+    final authState = ref.watch(authStateChangesProvider);
+    if (authState.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (authState.asData?.value == null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.favorite_border, size: 44),
+            const SizedBox(height: 12),
+            const Text('登入後即可查看我的最愛'),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: () => context.push('/login?from=/search'),
+              child: const Text('登入'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final favorites = ref.watch(favoriteRestaurantsProvider);
+    return favorites.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stackTrace) => _SearchError(
+        onRetry: () => ref.invalidate(favoriteRestaurantsProvider),
+      ),
+      data: (restaurants) {
+        final filtered = _query.filterCatalog(restaurants);
+        if (!_favoriteNearbyEnabled) {
+          return filtered.isEmpty
+              ? const Center(child: Text('目前沒有符合條件的最愛店家'))
+              : _SearchResults(restaurants: filtered);
+        }
+        return _buildNearbyFavoriteResults(filtered);
+      },
+    );
+  }
+
+  Widget _buildNearbyFavoriteResults(List<Restaurant> restaurants) {
+    final location = ref.watch(currentLocationProvider);
+    return location.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stackTrace) =>
+          _SearchError(onRetry: () => ref.invalidate(currentLocationProvider)),
+      data: (result) {
+        final origin = result.coordinates;
+        if (origin == null) {
+          return _LatestSearchFallback(
+            message: '無法取得目前位置，請確認定位權限。',
+            onRetry: () => ref.invalidate(currentLocationProvider),
+          );
+        }
+        final radiusMeters = _nearbyRadiusKm * 1000;
+        final nearby =
+            restaurants
+                .map((restaurant) {
+                  final location = restaurant.location;
+                  if (location == null) return null;
+                  final distance = GeoUtils.distanceMeters(origin, location);
+                  if (distance > radiusMeters) return null;
+                  return NearbyRestaurant(
+                    restaurant: restaurant,
+                    distanceMeters: distance,
+                  );
+                })
+                .whereType<NearbyRestaurant>()
+                .toList()
+              ..sort(
+                (first, second) =>
+                    first.distanceMeters.compareTo(second.distanceMeters),
+              );
+        return nearby.isEmpty
+            ? const Center(child: Text('附近範圍內沒有符合條件的最愛店家'))
+            : Column(
+                children: [
+                  _SearchBanner(
+                    message: '依距離排序，搜尋範圍 ${_nearbyRadiusKm.toInt()} 公里。',
+                  ),
+                  Expanded(child: _SearchResults(nearbyRestaurants: nearby)),
+                ],
+              );
       },
     );
   }
