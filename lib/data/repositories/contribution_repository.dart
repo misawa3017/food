@@ -310,13 +310,16 @@ class ContributionRepository {
       throw const ContributionException('選取的圖片無法讀取。');
     }
     final longestSide = max(decoded.width, decoded.height);
-    final resized = longestSide <= 1600
-        ? decoded
-        : image_library.copyResize(
-            decoded,
-            width: decoded.width >= decoded.height ? 1600 : null,
-            height: decoded.height > decoded.width ? 1600 : null,
-          );
+    if (longestSide <= 1600) {
+      return Uint8List.fromList(image_library.encodeJpg(decoded, quality: 80));
+    }
+    final resizeWidth = decoded.width >= decoded.height ? 1600 : null;
+    final resizeHeight = decoded.height > decoded.width ? 1600 : null;
+    final resized = image_library.copyResize(
+      decoded,
+      width: resizeWidth,
+      height: resizeHeight,
+    );
     return Uint8List.fromList(image_library.encodeJpg(resized, quality: 80));
   }
 

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-Hant-TW">
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -69,14 +69,14 @@
   </style>
 </head>
 <body>
-  <div id="app-loading" role="status" aria-live="polite">
+  <output id="app-loading" aria-live="polite">
     <div class="loading-content">
       <div class="loading-icon" aria-hidden="true">🍴</div>
       <div class="loading-title">管吃</div>
       <div class="loading-subtitle">正在載入美食資訊</div>
       <div class="loading-spinner" aria-hidden="true"></div>
     </div>
-  </div>
+  </output>
   <script>
     window.addEventListener('flutter-first-frame', function () {
       document.getElementById('app-loading')?.classList.add('is-hidden');

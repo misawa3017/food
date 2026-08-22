@@ -20,11 +20,7 @@ class RestaurantReview {
       authorName: data['authorName'] as String? ?? '美食通使用者',
       authorPhotoUrl: _nullableString(data['authorPhotoUrl']),
       status: data['status'] as String? ?? 'removed',
-      createdAt: createdAt is Timestamp
-          ? createdAt.toDate()
-          : createdAt is DateTime
-          ? createdAt
-          : null,
+      createdAt: _dateTimeFromValue(createdAt),
     );
   }
 
@@ -35,6 +31,11 @@ class RestaurantReview {
   final String? authorPhotoUrl;
   final String status;
   final DateTime? createdAt;
+}
+
+DateTime? _dateTimeFromValue(Object? value) {
+  if (value is Timestamp) return value.toDate();
+  return value is DateTime ? value : null;
 }
 
 String? _nullableString(Object? value) {

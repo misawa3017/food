@@ -16,11 +16,7 @@ class RestaurantPhoto {
       url: data['url'] as String? ?? '',
       status: data['status'] as String? ?? 'removed',
       uploadedBy: data['uploadedBy'] as String?,
-      createdAt: createdAt is Timestamp
-          ? createdAt.toDate()
-          : createdAt is DateTime
-          ? createdAt
-          : null,
+      createdAt: _dateTimeFromValue(createdAt),
     );
   }
 
@@ -29,4 +25,9 @@ class RestaurantPhoto {
   final String status;
   final String? uploadedBy;
   final DateTime? createdAt;
+}
+
+DateTime? _dateTimeFromValue(Object? value) {
+  if (value is Timestamp) return value.toDate();
+  return value is DateTime ? value : null;
 }

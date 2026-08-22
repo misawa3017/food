@@ -277,13 +277,9 @@ function candidateFromFeature(feature: unknown): Candidate | null {
   const data = feature as {properties?: unknown; geometry?: unknown};
   if (!data.properties || typeof data.properties !== "object") return null;
   const properties = data.properties as Record<string, unknown>;
-  const coordinates = data.geometry && typeof data.geometry === "object"
-    ? (data.geometry as {coordinates?: unknown}).coordinates
-    : null;
-  const longitude = typeof properties.lon === "number" ? properties.lon :
-    Array.isArray(coordinates) ? coordinates[0] : null;
-  const latitude = typeof properties.lat === "number" ? properties.lat :
-    Array.isArray(coordinates) ? coordinates[1] : null;
+  const coordinates = getCoordinates(data.geometry);
+  const longitude = getCoordinate(properties.lon, coordinates, 0);
+  const latitude = getCoordinate(properties.lat, coordinates, 1);
   if (typeof latitude !== "number" || typeof longitude !== "number" ||
       !Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
   if (nonEmptyString(properties.result_type) !== "amenity") return null;
@@ -293,8 +289,7 @@ function candidateFromFeature(feature: unknown): Candidate | null {
   const placeId = nonEmptyString(properties.place_id) ?? null;
   if (!name || !address || !placeId) return null;
   const rank = properties.rank;
-  const confidence = rank && typeof rank === "object" &&
-      "confidence" in rank ? optionalNumber(rank.confidence) : null;
+  const confidence = getRankConfidence(rank);
   return {
     placeId,
     name,
@@ -304,6 +299,29 @@ function candidateFromFeature(feature: unknown): Candidate | null {
     confidence,
     isRecommended: false,
   };
+}
+
+function getCoordinates(geometry: unknown): unknown[] | null {
+  if (!geometry || typeof geometry !== "object") return null;
+  const coordinates = (geometry as {coordinates?: unknown}).coordinates;
+  return Array.isArray(coordinates) ? coordinates : null;
+}
+
+function getCoordinate(
+  value: unknown,
+  coordinates: unknown[] | null,
+  index: number,
+): number | null {
+  if (typeof value === "number") return value;
+  const coordinate = coordinates?.[index];
+  return typeof coordinate === "number" ? coordinate : null;
+}
+
+function getRankConfidence(rank: unknown): number | null {
+  if (!rank || typeof rank !== "object" || !("confidence" in rank)) {
+    return null;
+  }
+  return optionalNumber((rank as {confidence?: unknown}).confidence);
 }
 
 function isLikelyRestaurantMatch(sourceTitle: string, candidateName: string): boolean {
