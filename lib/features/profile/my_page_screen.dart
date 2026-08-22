@@ -316,46 +316,77 @@ class _FavoriteSection extends ConsumerWidget {
     return ExpansionTile(
       leading: const Icon(Icons.favorite_outline),
       title: const Text('我的最愛'),
-      subtitle: favorites.when(
-        loading: () => const Text('載入中…'),
-        error: (error, stackTrace) => const Text('收藏載入失敗'),
-        data: (items) => Text('${items.length} 家店'),
-      ),
-      children: favorites.when(
-        loading: () => const [LinearProgressIndicator()],
-        error: (error, stackTrace) => const [
-          ListTile(title: Text('無法載入收藏，請稍後再試。')),
-        ],
-        data: (items) => items.isEmpty
-            ? const [ListTile(title: Text('尚未收藏店家。'))]
-            : items
-                  .map(
-                    (favorite) => ListTile(
-                      leading: const Icon(Icons.restaurant_outlined),
-                      title: Text(favorite.name),
-                      subtitle: Text(favorite.categories.join('、')),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () async {
-                        try {
-                          final targetId = await ref
-                              .read(favoriteRepositoryProvider)
-                              .resolveFavoriteTarget(favorite.restaurantId);
-                          if (context.mounted) {
-                            context.push('/restaurants/$targetId');
-                          }
-                        } on FavoriteException catch (error) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(error.message)),
-                            );
-                          }
-                        }
-                      },
-                    ),
-                  )
-                  .toList(growable: false),
-      ),
+      subtitle: _favoriteSubtitle(favorites),
+      children: _favoriteChildren(context, ref, favorites),
     );
+  }
+
+  Widget _favoriteSubtitle(AsyncValue<List<FavoriteRestaurant>> value) {
+    return value.when(
+      loading: () => const Text('載入中…'),
+      error: (error, stackTrace) => const Text('收藏載入失敗'),
+      data: (items) => Text('${items.length} 家店'),
+    );
+  }
+
+  List<Widget> _favoriteChildren(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<List<FavoriteRestaurant>> value,
+  ) {
+    return value.when(
+      loading: () => const [LinearProgressIndicator()],
+      error: (error, stackTrace) => const [
+        ListTile(title: Text('無法載入收藏，請稍後再試。')),
+      ],
+      data: (items) => _favoriteItems(context, ref, items),
+    );
+  }
+
+  List<Widget> _favoriteItems(
+    BuildContext context,
+    WidgetRef ref,
+    List<FavoriteRestaurant> favorites,
+  ) {
+    if (favorites.isEmpty) {
+      return const [ListTile(title: Text('尚未收藏店家。'))];
+    }
+    return favorites
+        .map((favorite) => _favoriteTile(context, ref, favorite))
+        .toList(growable: false);
+  }
+
+  Widget _favoriteTile(
+    BuildContext context,
+    WidgetRef ref,
+    FavoriteRestaurant favorite,
+  ) {
+    return ListTile(
+      leading: const Icon(Icons.restaurant_outlined),
+      title: Text(favorite.name),
+      subtitle: Text(favorite.categories.join('、')),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => _openFavorite(context, ref, favorite),
+    );
+  }
+
+  Future<void> _openFavorite(
+    BuildContext context,
+    WidgetRef ref,
+    FavoriteRestaurant favorite,
+  ) async {
+    try {
+      final targetId = await ref
+          .read(favoriteRepositoryProvider)
+          .resolveFavoriteTarget(favorite.restaurantId);
+      if (context.mounted) context.push('/restaurants/$targetId');
+    } on FavoriteException catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    }
   }
 }
 
