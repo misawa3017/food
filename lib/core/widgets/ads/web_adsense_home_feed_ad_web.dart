@@ -1,10 +1,8 @@
-// ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use
-
 import 'dart:async';
-import 'dart:html' as html;
 import 'dart:ui_web' as ui_web;
 
 import 'package:flutter/material.dart';
+import 'package:web/web.dart' as web;
 
 import '../../ads/adsense_loader.dart';
 import '../../../firebase_environment.dart';
@@ -41,12 +39,12 @@ class _WebAdSenseHomeFeedAdState extends State<WebAdSenseHomeFeedAd> {
     }
   }
 
-  html.Element _createAdView(int viewId) {
-    final container = html.DivElement()
+  web.Element _createAdView(int viewId) {
+    final container = web.HTMLDivElement()
       ..style.width = '100%'
       ..style.height = '100%'
       ..style.display = 'block';
-    final adElement = html.Element.tag('ins')
+    final adElement = web.document.createElement('ins') as web.HTMLElement
       ..className = 'adsbygoogle'
       ..style.display = 'block'
       ..setAttribute('data-ad-client', _publisherId)
@@ -60,10 +58,10 @@ class _WebAdSenseHomeFeedAdState extends State<WebAdSenseHomeFeedAd> {
     return container;
   }
 
-  void _requestAd(html.Element container) {
+  void _requestAd(web.Element container) {
     try {
       AdSenseLoader.load();
-      final requestScript = html.ScriptElement()
+      final requestScript = web.HTMLScriptElement()
         ..type = 'text/javascript'
         ..text = '(adsbygoogle = window.adsbygoogle || []).push({});';
       container.append(requestScript);

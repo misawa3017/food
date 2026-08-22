@@ -14,6 +14,8 @@ import '../../features/search/search_screen.dart';
 import '../../features/upload/add_restaurant_screen.dart';
 import '../widgets/app_shell.dart';
 
+const _loginPath = '/login';
+
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateChangesProvider);
 
@@ -25,7 +27,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       }
 
       final isSignedIn = authState.asData?.value != null;
-      final isLoginRoute = state.uri.path == '/login';
+      final isLoginRoute = state.uri.path == _loginPath;
       final requiresSignIn =
           state.uri.path == '/upload' ||
           state.uri.path == '/admin' ||
@@ -33,7 +35,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       if (!isSignedIn && requiresSignIn) {
         return Uri(
-          path: '/login',
+          path: _loginPath,
           queryParameters: {'from': state.uri.toString()},
         ).toString();
       }
@@ -55,7 +57,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const GoogleSavedPlacesImportScreen(),
       ),
       GoRoute(
-        path: '/login',
+        path: _loginPath,
         builder: (context, state) {
           return LoginScreen(
             redirectLocation: state.uri.queryParameters['from'],

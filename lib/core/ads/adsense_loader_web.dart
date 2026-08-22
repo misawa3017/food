@@ -1,4 +1,4 @@
-import 'dart:html' as html;
+import 'package:web/web.dart' as web;
 
 import '../../firebase_environment.dart';
 
@@ -17,16 +17,16 @@ class AdSenseLoader {
       return;
     }
 
-    if (html.document.head?.querySelector(_scriptSelector) != null) {
+    if (web.document.head?.querySelector(_scriptSelector) != null) {
       return;
     }
 
-    final script = html.ScriptElement()
+    final script = web.HTMLScriptElement()
       ..async = true
       ..src =
           'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=$_publisherId'
       ..crossOrigin = 'anonymous'
       ..setAttribute('data-food-adsense', 'true');
-    html.document.head?.append(script);
+    web.document.head?.append(script);
   }
 }

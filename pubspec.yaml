@@ -55,6 +55,7 @@ dependencies:
   # v12 aligns with geolocator's win32 dependency; the stable v11 line cannot
   # coexist with the current location package.
   file_picker: ^12.0.0-beta.7
+  web: ^1.1.1
 
 dev_dependencies:
   flutter_test:
