@@ -657,11 +657,13 @@ class _ContributionLimitSettings extends ConsumerStatefulWidget {
 class _ContributionLimitSettingsState
     extends ConsumerState<_ContributionLimitSettings> {
   final _controller = TextEditingController();
+  final _photoController = TextEditingController();
   bool _isSaving = false;
 
   @override
   void dispose() {
     _controller.dispose();
+    _photoController.dispose();
     super.dispose();
   }
 
@@ -673,13 +675,23 @@ class _ContributionLimitSettingsState
       ).showSnackBar(const SnackBar(content: Text('請輸入 1 到 100 的整數。')));
       return;
     }
+    final photoValue = int.tryParse(_photoController.text.trim());
+    if (photoValue == null || photoValue < 1 || photoValue > 100) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('照片投稿上限必須是 1 到 100。')));
+      return;
+    }
 
     setState(() => _isSaving = true);
     try {
       await ref
           .read(contributionRepositoryProvider)
-          .updateRestaurantDailyLimit(value);
-      ref.invalidate(adminRestaurantDailyLimitProvider);
+          .updateContributionLimits(
+            restaurantDailyLimit: value,
+            photoDailyLimit: photoValue,
+          );
+      ref.invalidate(adminContributionLimitsProvider);
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -698,14 +710,15 @@ class _ContributionLimitSettingsState
 
   @override
   Widget build(BuildContext context) {
-    final limit = ref.watch(adminRestaurantDailyLimitProvider);
+    final limit = ref.watch(adminContributionLimitsProvider);
     return limit.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stackTrace) =>
           const Center(child: Text('無法讀取投稿限制，請稍後再試。')),
-      data: (currentLimit) {
+      data: (limits) {
         if (_controller.text.isEmpty && !_isSaving) {
-          _controller.text = '$currentLimit';
+          _controller.text = '${limits['restaurantDailyLimit']}';
+          _photoController.text = '${limits['photoDailyLimit']}';
         }
         return ListView(
           padding: const EdgeInsets.all(16),
@@ -723,6 +736,18 @@ class _ContributionLimitSettingsState
                     const SizedBox(height: 8),
                     const Text(
                       '此設定套用於所有帳號的 24 小時投稿額度。可設為 1 到 100；既有的照片、評論與檢舉限制不受影響。',
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _photoController,
+                      enabled: !_isSaving,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: '每日照片投稿上限',
+                        helperText: '每位使用者 24 小時內可投稿的照片數量，範圍為 1 到 100。',
+                        suffixText: '張',
+                      ),
                     ),
                     const SizedBox(height: 16),
                     TextField(

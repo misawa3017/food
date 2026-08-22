@@ -36,6 +36,10 @@ final adminRestaurantDailyLimitProvider = FutureProvider<int>((ref) {
   return ref.watch(contributionRepositoryProvider).getRestaurantDailyLimit();
 });
 
+final adminContributionLimitsProvider = FutureProvider<Map<String, int>>((ref) {
+  return ref.watch(contributionRepositoryProvider).getContributionLimits();
+});
+
 Stream<List<ModerationRequest>> _watchRequests(
   Ref ref,
   String collection,

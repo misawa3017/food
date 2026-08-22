@@ -206,6 +206,38 @@ class ContributionRepository {
     await _callContribution('mergeRestaurants', {'requestId': requestId});
   }
 
+  Future<Map<String, int>> getContributionLimits() async {
+    try {
+      final result = await _call('getRestaurantContributionLimit', const {});
+      final restaurantValue = result['restaurantDailyLimit'];
+      final photoValue = result['photoDailyLimit'];
+      if (!_isPositiveInteger(restaurantValue) ||
+          !_isPositiveInteger(photoValue)) {
+        throw const ContributionException('投稿上限資料格式錯誤。');
+      }
+      return {
+        'restaurantDailyLimit': (restaurantValue as num).toInt(),
+        'photoDailyLimit': (photoValue as num).toInt(),
+      };
+    } on FirebaseFunctionsException catch (error) {
+      throw _contributionException(error, _newIdempotencyKey());
+    }
+  }
+
+  Future<void> updateContributionLimits({
+    required int restaurantDailyLimit,
+    required int photoDailyLimit,
+  }) async {
+    try {
+      await _call('updateRestaurantContributionLimit', {
+        'restaurantDailyLimit': restaurantDailyLimit,
+        'photoDailyLimit': photoDailyLimit,
+      });
+    } on FirebaseFunctionsException catch (error) {
+      throw _contributionException(error, _newIdempotencyKey());
+    }
+  }
+
   Future<int> getRestaurantDailyLimit() async {
     try {
       final result = await _call('getRestaurantContributionLimit', const {});
@@ -217,6 +249,10 @@ class ContributionRepository {
     } on FirebaseFunctionsException catch (error) {
       throw _contributionException(error, _newIdempotencyKey());
     }
+  }
+
+  bool _isPositiveInteger(Object? value) {
+    return value is num && value >= 1 && value == value.roundToDouble();
   }
 
   Future<void> updateRestaurantDailyLimit(int restaurantDailyLimit) async {
