@@ -204,39 +204,18 @@ class _RestaurantManagementState extends ConsumerState<_RestaurantManagement> {
           ),
           FilledButton(
             onPressed: () {
-              final latitudeText = latitude.text.trim();
-              final longitudeText = longitude.text.trim();
-              final parsedLatitude = latitudeText.isEmpty
-                  ? null
-                  : double.tryParse(latitudeText);
-              final parsedLongitude = longitudeText.isEmpty
-                  ? null
-                  : double.tryParse(longitudeText);
-              if ((latitudeText.isNotEmpty && parsedLatitude == null) ||
-                  (longitudeText.isNotEmpty && parsedLongitude == null)) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text('座標必須是數字。')));
-                return;
-              }
-              if ((parsedLatitude == null) != (parsedLongitude == null)) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('緯度與經度必須同時填寫或同時留白。')),
-                );
-                return;
-              }
-              Navigator.pop(context, {
-                'name': name.text,
-                'address': address.text,
-                'googleMapsUrl': googleMapsUrl.text.trim().isEmpty
-                    ? null
-                    : googleMapsUrl.text.trim(),
-                'latitude': parsedLatitude,
-                'longitude': parsedLongitude,
-                'categories': _splitList(categories.text),
-                'amenities': _splitList(amenities.text),
-                'recommendedDishes': _splitList(dishes.text),
-              });
+              final changes = _buildEditChanges(
+                context,
+                name: name,
+                address: address,
+                googleMapsUrl: googleMapsUrl,
+                latitude: latitude,
+                longitude: longitude,
+                categories: categories,
+                amenities: amenities,
+                dishes: dishes,
+              );
+              if (changes != null) Navigator.pop(context, changes);
             },
             child: const Text('儲存'),
           ),
@@ -270,6 +249,52 @@ class _RestaurantManagementState extends ConsumerState<_RestaurantManagement> {
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     }
+  }
+
+  Map<String, Object?>? _buildEditChanges(
+    BuildContext context, {
+    required TextEditingController name,
+    required TextEditingController address,
+    required TextEditingController googleMapsUrl,
+    required TextEditingController latitude,
+    required TextEditingController longitude,
+    required TextEditingController categories,
+    required TextEditingController amenities,
+    required TextEditingController dishes,
+  }) {
+    final latitudeText = latitude.text.trim();
+    final longitudeText = longitude.text.trim();
+    final parsedLatitude = latitudeText.isEmpty
+        ? null
+        : double.tryParse(latitudeText);
+    final parsedLongitude = longitudeText.isEmpty
+        ? null
+        : double.tryParse(longitudeText);
+    if ((latitudeText.isNotEmpty && parsedLatitude == null) ||
+        (longitudeText.isNotEmpty && parsedLongitude == null)) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('座標必須是數字。')));
+      return null;
+    }
+    if ((parsedLatitude == null) != (parsedLongitude == null)) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('緯度與經度必須同時填寫或同時留白。')));
+      return null;
+    }
+    return {
+      'name': name.text,
+      'address': address.text,
+      'googleMapsUrl': googleMapsUrl.text.trim().isEmpty
+          ? null
+          : googleMapsUrl.text.trim(),
+      'latitude': parsedLatitude,
+      'longitude': parsedLongitude,
+      'categories': _splitList(categories.text),
+      'amenities': _splitList(amenities.text),
+      'recommendedDishes': _splitList(dishes.text),
+    };
   }
 
   Future<void> _removeRestaurant(Restaurant restaurant) async {

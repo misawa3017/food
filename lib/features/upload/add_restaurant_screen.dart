@@ -89,16 +89,41 @@ class _AddRestaurantScreenState extends ConsumerState<AddRestaurantScreen> {
     bool duplicateAcknowledged = false,
     String? idempotencyKey,
   }) async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_canSubmit()) return;
+    final draft = _buildDraft();
+    setState(() {
+      _isSubmitting = true;
+      _progress = 0;
+    });
+    try {
+      final submission = await _submitDraft(
+        draft,
+        duplicateAcknowledged: duplicateAcknowledged,
+        idempotencyKey: idempotencyKey,
+      );
+      await _handleSubmissionSuccess(submission);
+    } on ContributionException catch (error) {
+      await _handleContributionError(error);
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  bool _canSubmit() {
+    if (!_formKey.currentState!.validate()) return false;
     if (_categories.isEmpty) {
       _showMessage('請至少選擇一個分類。');
-      return;
+      return false;
     }
     if (_location == null && _isLocating) {
       _showMessage('請先等待目前位置取得完成。');
-      return;
+      return false;
     }
-    final draft = RestaurantContributionDraft(
+    return true;
+  }
+
+  RestaurantContributionDraft _buildDraft() {
+    return RestaurantContributionDraft(
       name: _nameController.text.trim(),
       address: _addressController.text.trim(),
       location: _location,
@@ -113,47 +138,51 @@ class _AddRestaurantScreenState extends ConsumerState<AddRestaurantScreen> {
       amenities: _amenities.toList(growable: false),
       photos: _photos,
     );
-    setState(() {
-      _isSubmitting = true;
-      _progress = 0;
-    });
-    try {
-      final submission = await ref
-          .read(contributionRepositoryProvider)
-          .submitRestaurant(
-            draft,
-            duplicateAcknowledged: duplicateAcknowledged,
-            idempotencyKey: idempotencyKey,
-            onProgress: (progress) {
-              if (mounted) setState(() => _progress = progress);
-            },
-          );
-      if (mounted) {
-        _showMessage(
-          submission.photoUploadFailed ? '店家已新增，但照片上傳失敗；可在店家頁重新上傳。' : '店家已新增。',
+  }
+
+  Future<RestaurantSubmissionResult> _submitDraft(
+    RestaurantContributionDraft draft, {
+    required bool duplicateAcknowledged,
+    required String? idempotencyKey,
+  }) {
+    return ref
+        .read(contributionRepositoryProvider)
+        .submitRestaurant(
+          draft,
+          duplicateAcknowledged: duplicateAcknowledged,
+          idempotencyKey: idempotencyKey,
+          onProgress: (progress) {
+            if (mounted) setState(() => _progress = progress);
+          },
         );
-        await ref.read(adServiceProvider).showInterstitial();
-      }
-      if (mounted) {
-        final photoUploadFailed = submission.photoUploadFailed;
-        context.go(
-          '/restaurants/${submission.restaurantId}'
-          '${photoUploadFailed ? '?photoUploadFailed=1' : ''}',
-        );
-      }
-    } on ContributionException catch (error) {
-      if (!mounted) return;
-      if (error.candidates.isNotEmpty) {
-        await _confirmDuplicate(error);
-      } else {
-        final retryText = error.retryAfterSeconds == null
-            ? ''
-            : ' 約 ${error.retryAfterSeconds} 秒後可再試。';
-        _showMessage('${error.message}$retryText');
-      }
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
+  }
+
+  Future<void> _handleSubmissionSuccess(
+    RestaurantSubmissionResult submission,
+  ) async {
+    if (!mounted) return;
+    _showMessage(
+      submission.photoUploadFailed ? '店家已新增，但照片上傳失敗；可在店家頁重新上傳。' : '店家已新增。',
+    );
+    await ref.read(adServiceProvider).showInterstitial();
+    if (!mounted) return;
+    final photoUploadFailed = submission.photoUploadFailed;
+    context.go(
+      '/restaurants/${submission.restaurantId}'
+      '${photoUploadFailed ? '?photoUploadFailed=1' : ''}',
+    );
+  }
+
+  Future<void> _handleContributionError(ContributionException error) async {
+    if (!mounted) return;
+    if (error.candidates.isNotEmpty) {
+      await _confirmDuplicate(error);
+      return;
     }
+    final retryText = error.retryAfterSeconds == null
+        ? ''
+        : ' 約 ${error.retryAfterSeconds} 秒後可再試。';
+    _showMessage('${error.message}$retryText');
   }
 
   Future<void> _confirmDuplicate(ContributionException error) async {
@@ -206,6 +235,180 @@ class _AddRestaurantScreenState extends ConsumerState<AddRestaurantScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  List<Widget> _buildFormSections(BuildContext context) {
+    return [
+      const _FormIntroduction(),
+      const SizedBox(height: 24),
+      if (widget.importedPlace != null) ...[
+        _ImportedPlaceNotice(
+          showGoogleMapsLink: widget.importedPlace?.googleMapsUrl != null,
+          onOpenGoogleMaps: _openImportedGoogleMaps,
+        ),
+        const SizedBox(height: 20),
+      ],
+      _buildBasicSection(),
+      const SizedBox(height: 20),
+      _buildLocationSection(),
+      const SizedBox(height: 20),
+      _buildCategorySection(),
+      const SizedBox(height: 20),
+      _buildAmenitySection(),
+      const SizedBox(height: 20),
+      _buildPhotoSection(),
+      if (_isSubmitting) ...[
+        const SizedBox(height: 24),
+        _SubmissionProgress(progress: _progress),
+      ],
+      const SizedBox(height: 28),
+      FilledButton.icon(
+        onPressed: _isSubmitting ? null : _submit,
+        icon: const Icon(Icons.publish_outlined),
+        label: const Text('發布店家'),
+      ),
+      const SizedBox(height: 12),
+      Text(
+        '送出前會檢查同名且距離 200 公尺內的店家；若有候選，不會直接阻擋連鎖分店。',
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
+    ];
+  }
+
+  Widget _buildBasicSection() {
+    return _FormSection(
+      number: '01',
+      title: '店家基本資料',
+      subtitle: '地址為必填，讓其他人更容易找到這家店。',
+      child: Column(
+        children: [
+          TextFormField(
+            controller: _nameController,
+            enabled: !_isSubmitting,
+            decoration: const InputDecoration(
+              labelText: '店家名稱',
+              hintText: '例如：管吃小館',
+              prefixIcon: Icon(Icons.storefront_outlined),
+            ),
+            validator: (value) =>
+                (value?.trim().length ?? 0) < 2 ? '請輸入至少 2 個字的店家名稱' : null,
+          ),
+          const SizedBox(height: 14),
+          TextFormField(
+            controller: _addressController,
+            enabled: !_isSubmitting,
+            minLines: 1,
+            maxLines: 2,
+            decoration: const InputDecoration(
+              labelText: '店家地址',
+              hintText: '例如：台北市信義區市府路 45 號',
+              prefixIcon: Icon(Icons.location_on_outlined),
+            ),
+            validator: (value) =>
+                (value?.trim().length ?? 0) < 3 ? '請輸入店家地址' : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLocationSection() {
+    return _FormSection(
+      number: '02',
+      title: '店家座標（選填）',
+      subtitle: '不按也能新增，仍可透過搜尋與最新店家找到，但沒辦法出現在附近。',
+      child: _LocationPicker(
+        location: _location,
+        isLocating: _isLocating,
+        isSubmitting: _isSubmitting,
+        onUseCurrentLocation: _useCurrentLocation,
+      ),
+    );
+  }
+
+  Widget _buildCategorySection() {
+    return _FormSection(
+      number: '03',
+      title: '分類與推薦菜色',
+      subtitle: '至少選一個分類，推薦菜色可以留白。',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final category in FoodCategories.all)
+                FilterChip(
+                  label: Text(category),
+                  selected: _categories.contains(category),
+                  onSelected: _isSubmitting
+                      ? null
+                      : (selected) =>
+                            _toggleValue(_categories, category, selected),
+                ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          TextFormField(
+            controller: _dishesController,
+            enabled: !_isSubmitting,
+            maxLines: 2,
+            decoration: const InputDecoration(
+              labelText: '推薦菜色',
+              hintText: '以逗號分隔，例如：牛肉麵、小菜',
+              prefixIcon: Icon(Icons.restaurant_menu_outlined),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAmenitySection() {
+    return _FormSection(
+      number: '04',
+      title: '店家設施（選填）',
+      subtitle: '勾選店家實際提供的設施，讓其他人更容易判斷是否適合前往。',
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final amenity in RestaurantAmenities.all)
+            FilterChip(
+              label: Text(amenity),
+              selected: _amenities.contains(amenity),
+              onSelected: _isSubmitting
+                  ? null
+                  : (selected) => _toggleValue(_amenities, amenity, selected),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _toggleValue(Set<String> values, String value, bool selected) {
+    setState(() {
+      if (selected) {
+        values.add(value);
+      } else {
+        values.remove(value);
+      }
+    });
+  }
+
+  Widget _buildPhotoSection() {
+    return _FormSection(
+      number: '05',
+      title: '店家照片（選填）',
+      subtitle: '最多 5 張，第一張會作為封面。',
+      child: _PhotoPicker(
+        photoCount: _photos.length,
+        isSubmitting: _isSubmitting,
+        onPickPhotos: _pickPhotos,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -217,164 +420,7 @@ class _AddRestaurantScreenState extends ConsumerState<AddRestaurantScreen> {
             key: _formKey,
             child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
-              children: [
-                const _FormIntroduction(),
-                const SizedBox(height: 24),
-                if (widget.importedPlace != null) ...[
-                  _ImportedPlaceNotice(
-                    showGoogleMapsLink:
-                        widget.importedPlace?.googleMapsUrl != null,
-                    onOpenGoogleMaps: _openImportedGoogleMaps,
-                  ),
-                  const SizedBox(height: 20),
-                ],
-                _FormSection(
-                  number: '01',
-                  title: '店家基本資料',
-                  subtitle: '地址為必填，讓其他人更容易找到這家店。',
-                  child: Column(
-                    children: [
-                      TextFormField(
-                        controller: _nameController,
-                        enabled: !_isSubmitting,
-                        decoration: const InputDecoration(
-                          labelText: '店家名稱',
-                          hintText: '例如：管吃小館',
-                          prefixIcon: Icon(Icons.storefront_outlined),
-                        ),
-                        validator: (value) => (value?.trim().length ?? 0) < 2
-                            ? '請輸入至少 2 個字的店家名稱'
-                            : null,
-                      ),
-                      const SizedBox(height: 14),
-                      TextFormField(
-                        controller: _addressController,
-                        enabled: !_isSubmitting,
-                        minLines: 1,
-                        maxLines: 2,
-                        decoration: const InputDecoration(
-                          labelText: '店家地址',
-                          hintText: '例如：台北市信義區市府路 45 號',
-                          prefixIcon: Icon(Icons.location_on_outlined),
-                        ),
-                        validator: (value) =>
-                            (value?.trim().length ?? 0) < 3 ? '請輸入店家地址' : null,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                _FormSection(
-                  number: '02',
-                  title: '店家座標（選填）',
-                  subtitle: '不按也能新增，仍可透過搜尋與最新店家找到，但沒辦法出現在附近。',
-                  child: _LocationPicker(
-                    location: _location,
-                    isLocating: _isLocating,
-                    isSubmitting: _isSubmitting,
-                    onUseCurrentLocation: _useCurrentLocation,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                _FormSection(
-                  number: '03',
-                  title: '分類與推薦菜色',
-                  subtitle: '至少選一個分類，推薦菜色可以留白。',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          for (final category in FoodCategories.all)
-                            FilterChip(
-                              label: Text(category),
-                              selected: _categories.contains(category),
-                              onSelected: _isSubmitting
-                                  ? null
-                                  : (selected) {
-                                      setState(() {
-                                        if (selected) {
-                                          _categories.add(category);
-                                        } else {
-                                          _categories.remove(category);
-                                        }
-                                      });
-                                    },
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 18),
-                      TextFormField(
-                        controller: _dishesController,
-                        enabled: !_isSubmitting,
-                        maxLines: 2,
-                        decoration: const InputDecoration(
-                          labelText: '推薦菜色',
-                          hintText: '以逗號分隔，例如：牛肉麵、小菜',
-                          prefixIcon: Icon(Icons.restaurant_menu_outlined),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                _FormSection(
-                  number: '04',
-                  title: '店家設施（選填）',
-                  subtitle: '勾選店家實際提供的設施，讓其他人更容易判斷是否適合前往。',
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final amenity in RestaurantAmenities.all)
-                        FilterChip(
-                          label: Text(amenity),
-                          selected: _amenities.contains(amenity),
-                          onSelected: _isSubmitting
-                              ? null
-                              : (selected) {
-                                  setState(() {
-                                    if (selected) {
-                                      _amenities.add(amenity);
-                                    } else {
-                                      _amenities.remove(amenity);
-                                    }
-                                  });
-                                },
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                _FormSection(
-                  number: '05',
-                  title: '店家照片（選填）',
-                  subtitle: '最多 5 張，第一張會作為封面。',
-                  child: _PhotoPicker(
-                    photoCount: _photos.length,
-                    isSubmitting: _isSubmitting,
-                    onPickPhotos: _pickPhotos,
-                  ),
-                ),
-                if (_isSubmitting) ...[
-                  const SizedBox(height: 24),
-                  _SubmissionProgress(progress: _progress),
-                ],
-                const SizedBox(height: 28),
-                FilledButton.icon(
-                  onPressed: _isSubmitting ? null : _submit,
-                  icon: const Icon(Icons.publish_outlined),
-                  label: const Text('發布店家'),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  '送出前會檢查同名且距離 200 公尺內的店家；若有候選，不會直接阻擋連鎖分店。',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
+              children: _buildFormSections(context),
             ),
           ),
         ),

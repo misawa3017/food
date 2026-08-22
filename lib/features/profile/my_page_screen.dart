@@ -373,34 +373,46 @@ class _ImportedPlacesSection extends ConsumerWidget {
         error: (error, stackTrace) => const Text('讀取失敗'),
         data: (items) => Text('${items.length} 筆'),
       ),
-      children: places.when(
-        loading: () => const [LinearProgressIndicator()],
-        error: (error, stackTrace) => const [
-          ListTile(title: Text('無法讀取匯入收藏。')),
-        ],
-        data: (items) => items.isEmpty
-            ? const [ListTile(title: Text('尚未匯入 Google 地圖收藏。'))]
-            : items
-                  .map(
-                    (place) => ListTile(
-                      leading: const Icon(Icons.restaurant_outlined),
-                      onTap: () => context.push('/upload', extra: place),
-                      title: Text(place.sourceTitle),
-                      subtitle: Text(
-                        place.address.isEmpty
-                            ? 'Google Maps 收藏，請確認後建立公開店家'
-                            : place.address,
-                      ),
-                      trailing: IconButton(
-                        tooltip: '在地圖開啟',
-                        icon: const Icon(Icons.open_in_new),
-                        onPressed: () => _openMap(context, place),
-                      ),
-                    ),
-                  )
-                  .toList(growable: false),
-      ),
+      children: _buildPlaceChildren(context, places),
     );
+  }
+
+  List<Widget> _buildPlaceChildren(
+    BuildContext context,
+    AsyncValue<List<ImportedPlace>> places,
+  ) {
+    return places.when(
+      loading: () => const [LinearProgressIndicator()],
+      error: (error, stackTrace) => const [ListTile(title: Text('無法讀取匯入收藏。'))],
+      data: (items) => _buildPlaceItems(context, items),
+    );
+  }
+
+  List<Widget> _buildPlaceItems(
+    BuildContext context,
+    List<ImportedPlace> places,
+  ) {
+    if (places.isEmpty) {
+      return const [ListTile(title: Text('尚未匯入 Google 地圖收藏。'))];
+    }
+    return places
+        .map((place) {
+          final subtitle = place.address.isEmpty
+              ? 'Google Maps 收藏，請確認後建立公開店家'
+              : place.address;
+          return ListTile(
+            leading: const Icon(Icons.restaurant_outlined),
+            onTap: () => context.push('/upload', extra: place),
+            title: Text(place.sourceTitle),
+            subtitle: Text(subtitle),
+            trailing: IconButton(
+              tooltip: '在地圖開啟',
+              icon: const Icon(Icons.open_in_new),
+              onPressed: () => _openMap(context, place),
+            ),
+          );
+        })
+        .toList(growable: false);
   }
 
   Future<void> _openMap(BuildContext context, ImportedPlace place) async {

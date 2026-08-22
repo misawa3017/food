@@ -379,52 +379,66 @@ class _OverviewCard extends StatelessWidget {
               padding: EdgeInsets.symmetric(vertical: 18),
               child: Divider(height: 1),
             ),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final compact = constraints.maxWidth < 430;
-                final stats = [
-                  _StatItem(
-                    icon: Icons.star_rounded,
-                    value: restaurant.ratingCount == 0
-                        ? '—'
-                        : restaurant.averageRating.toStringAsFixed(1),
-                    label: '${restaurant.ratingCount} 則評論',
-                  ),
-                  _StatItem(
-                    icon: Icons.favorite_border,
-                    value: '${restaurant.favoriteCount}',
-                    label: '收藏',
-                  ),
-                  _StatItem(
-                    icon: Icons.photo_library_outlined,
-                    value: '${restaurant.photoCount}',
-                    label: '照片',
-                  ),
-                ];
-                if (compact) {
-                  return Column(
-                    children: [
-                      for (var index = 0; index < stats.length; index++) ...[
-                        stats[index],
-                        if (index != stats.length - 1)
-                          const Divider(height: 24),
-                      ],
-                    ],
-                  );
-                }
-                return Row(
-                  children: [
-                    for (var index = 0; index < stats.length; index++) ...[
-                      Expanded(child: stats[index]),
-                      if (index != stats.length - 1) const SizedBox(width: 12),
-                    ],
-                  ],
-                );
-              },
-            ),
+            _OverviewStats(restaurant: restaurant),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _OverviewStats extends StatelessWidget {
+  const _OverviewStats({required this.restaurant});
+
+  final Restaurant restaurant;
+
+  @override
+  Widget build(BuildContext context) {
+    final stats = [
+      _StatItem(
+        icon: Icons.star_rounded,
+        value: restaurant.ratingCount == 0
+            ? '—'
+            : restaurant.averageRating.toStringAsFixed(1),
+        label: '${restaurant.ratingCount} 則評論',
+      ),
+      _StatItem(
+        icon: Icons.favorite_border,
+        value: '${restaurant.favoriteCount}',
+        label: '收藏',
+      ),
+      _StatItem(
+        icon: Icons.photo_library_outlined,
+        value: '${restaurant.photoCount}',
+        label: '照片',
+      ),
+    ];
+    return LayoutBuilder(
+      builder: (context, constraints) => constraints.maxWidth < 430
+          ? _buildCompactStats(stats)
+          : _buildWideStats(stats),
+    );
+  }
+
+  Widget _buildCompactStats(List<Widget> stats) {
+    return Column(
+      children: [
+        for (var index = 0; index < stats.length; index++) ...[
+          stats[index],
+          if (index != stats.length - 1) const Divider(height: 24),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildWideStats(List<Widget> stats) {
+    return Row(
+      children: [
+        for (var index = 0; index < stats.length; index++) ...[
+          Expanded(child: stats[index]),
+          if (index != stats.length - 1) const SizedBox(width: 12),
+        ],
+      ],
     );
   }
 }
