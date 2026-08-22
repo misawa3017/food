@@ -602,7 +602,9 @@ export async function handleSubmitDuplicateRestaurant(
   const reason = requiredString(request.data.reason, "原因", 5, 500);
   const idempotencyKey = validIdempotencyKey(request.data.idempotencyKey);
   const operationReference = idempotencyReference(uid, idempotencyKey);
-  const pair = [sourceRestaurantId, targetRestaurantId].sort().join(":");
+  const pair = [sourceRestaurantId, targetRestaurantId]
+    .sort((first, second) => first.localeCompare(second))
+    .join(":");
   const requestReference = db
     .collection("restaurantMergeRequests")
     .doc(createHash("sha256").update(pair).digest("hex"));
