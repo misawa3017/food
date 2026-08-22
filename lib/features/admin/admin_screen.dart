@@ -11,6 +11,28 @@ import '../../data/repositories/contribution_repository.dart';
 import '../../data/repositories/restaurant_repository.dart';
 import '../restaurant/restaurant_image.dart';
 
+class _EditControllers {
+  const _EditControllers({
+    required this.name,
+    required this.address,
+    required this.googleMapsUrl,
+    required this.latitude,
+    required this.longitude,
+    required this.categories,
+    required this.amenities,
+    required this.dishes,
+  });
+
+  final TextEditingController name;
+  final TextEditingController address;
+  final TextEditingController googleMapsUrl;
+  final TextEditingController latitude;
+  final TextEditingController longitude;
+  final TextEditingController categories;
+  final TextEditingController amenities;
+  final TextEditingController dishes;
+}
+
 class AdminScreen extends ConsumerWidget {
   const AdminScreen({super.key});
 
@@ -206,14 +228,16 @@ class _RestaurantManagementState extends ConsumerState<_RestaurantManagement> {
             onPressed: () {
               final changes = _buildEditChanges(
                 context,
-                name: name,
-                address: address,
-                googleMapsUrl: googleMapsUrl,
-                latitude: latitude,
-                longitude: longitude,
-                categories: categories,
-                amenities: amenities,
-                dishes: dishes,
+                fields: _EditControllers(
+                  name: name,
+                  address: address,
+                  googleMapsUrl: googleMapsUrl,
+                  latitude: latitude,
+                  longitude: longitude,
+                  categories: categories,
+                  amenities: amenities,
+                  dishes: dishes,
+                ),
               );
               if (changes != null) Navigator.pop(context, changes);
             },
@@ -253,17 +277,10 @@ class _RestaurantManagementState extends ConsumerState<_RestaurantManagement> {
 
   Map<String, Object?>? _buildEditChanges(
     BuildContext context, {
-    required TextEditingController name,
-    required TextEditingController address,
-    required TextEditingController googleMapsUrl,
-    required TextEditingController latitude,
-    required TextEditingController longitude,
-    required TextEditingController categories,
-    required TextEditingController amenities,
-    required TextEditingController dishes,
+    required _EditControllers fields,
   }) {
-    final latitudeText = latitude.text.trim();
-    final longitudeText = longitude.text.trim();
+    final latitudeText = fields.latitude.text.trim();
+    final longitudeText = fields.longitude.text.trim();
     final parsedLatitude = latitudeText.isEmpty
         ? null
         : double.tryParse(latitudeText);
@@ -284,16 +301,16 @@ class _RestaurantManagementState extends ConsumerState<_RestaurantManagement> {
       return null;
     }
     return {
-      'name': name.text,
-      'address': address.text,
-      'googleMapsUrl': googleMapsUrl.text.trim().isEmpty
+      'name': fields.name.text,
+      'address': fields.address.text,
+      'googleMapsUrl': fields.googleMapsUrl.text.trim().isEmpty
           ? null
-          : googleMapsUrl.text.trim(),
+          : fields.googleMapsUrl.text.trim(),
       'latitude': parsedLatitude,
       'longitude': parsedLongitude,
-      'categories': _splitList(categories.text),
-      'amenities': _splitList(amenities.text),
-      'recommendedDishes': _splitList(dishes.text),
+      'categories': _splitList(fields.categories.text),
+      'amenities': _splitList(fields.amenities.text),
+      'recommendedDishes': _splitList(fields.dishes.text),
     };
   }
 
@@ -592,9 +609,9 @@ class _AdminPhotoTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (isCover)
-                    Chip(
-                      avatar: const Icon(Icons.star, size: 16),
-                      label: const Text('目前封面'),
+                    const Chip(
+                      avatar: Icon(Icons.star, size: 16),
+                      label: Text('目前封面'),
                     )
                   else
                     OutlinedButton.icon(

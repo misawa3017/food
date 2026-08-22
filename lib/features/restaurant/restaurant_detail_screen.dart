@@ -993,9 +993,9 @@ class _MissingRestaurantBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return const Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24),
         child: _SectionMessage(
           icon: Icons.storefront_outlined,
           message: '找不到這家店，可能已被移除。',
