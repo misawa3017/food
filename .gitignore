@@ -102,6 +102,7 @@ firebase-export/
 # Gradle 暫存資料
 
 android/.gradle/
+.gradle-cache/
 
 # Android SDK 本機路徑
 
