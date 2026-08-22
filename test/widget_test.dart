@@ -128,6 +128,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('店家名稱'), findsOneWidget);
+    expect(find.text('縣市'), findsOneWidget);
+    expect(find.text('鄉鎮市區'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('使用目前位置'),
+      300,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.text('使用目前位置'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('發布店家'),

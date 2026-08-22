@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/food_categories.dart';
 import '../../core/constants/restaurant_amenities.dart';
+import '../../core/constants/taiwan_administrative_areas.dart';
 import '../../data/models/contribution_models.dart';
 import '../../data/models/imported_place.dart';
 import '../../data/models/restaurant.dart';
@@ -27,11 +28,13 @@ class AddRestaurantScreen extends ConsumerStatefulWidget {
 class _AddRestaurantScreenState extends ConsumerState<AddRestaurantScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _addressController = TextEditingController();
+  final _streetController = TextEditingController();
   final _dishesController = TextEditingController();
   final _imagePicker = ImagePicker();
   final _categories = <String>{};
   final _amenities = <String>{};
+  String? _city;
+  String? _district;
   List<XFile> _photos = const [];
   GeoCoordinates? _location;
   bool _isLocating = false;
@@ -42,16 +45,41 @@ class _AddRestaurantScreenState extends ConsumerState<AddRestaurantScreen> {
   void initState() {
     super.initState();
     final importedPlace = widget.importedPlace;
-    if (importedPlace != null) _nameController.text = importedPlace.sourceTitle;
+    if (importedPlace != null) {
+      _nameController.text = importedPlace.sourceTitle;
+      _initializeAddress(importedPlace.address);
+    }
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _addressController.dispose();
+    _streetController.dispose();
     _dishesController.dispose();
     super.dispose();
   }
+
+  void _initializeAddress(String address) {
+    final normalizedAddress = address.replaceFirst('台', '臺');
+    for (final entry in taiwanAdministrativeAreas.entries) {
+      if (!normalizedAddress.startsWith(entry.key)) continue;
+      _city = entry.key;
+      final remainder = normalizedAddress.substring(entry.key.length);
+      for (final district in entry.value) {
+        if (!remainder.startsWith(district)) continue;
+        _district = district;
+        _streetController.text = remainder.substring(district.length).trim();
+        return;
+      }
+    }
+    _streetController.text = address;
+  }
+
+  List<String> get _districtOptions =>
+      _city == null ? const [] : taiwanAdministrativeAreas[_city]!;
+
+  String get _fullAddress =>
+      '$_city$_district${_streetController.text.trim()}'.trim();
 
   Future<void> _useCurrentLocation() async {
     setState(() => _isLocating = true);
@@ -125,7 +153,7 @@ class _AddRestaurantScreenState extends ConsumerState<AddRestaurantScreen> {
   RestaurantContributionDraft _buildDraft() {
     return RestaurantContributionDraft(
       name: _nameController.text.trim(),
-      address: _addressController.text.trim(),
+      address: _fullAddress,
       location: _location,
       googleMapsUrl: widget.importedPlace?.googleMapsUrl,
       categories: _categories.toList(growable: false),
@@ -217,11 +245,13 @@ class _AddRestaurantScreenState extends ConsumerState<AddRestaurantScreen> {
   void _resetFormForNextRestaurant() {
     _formKey.currentState?.reset();
     _nameController.clear();
-    _addressController.clear();
+    _streetController.clear();
     _dishesController.clear();
     setState(() {
       _categories.clear();
       _amenities.clear();
+      _city = null;
+      _district = null;
       _photos = const [];
       _location = null;
       _progress = 0;
@@ -349,18 +379,55 @@ class _AddRestaurantScreenState extends ConsumerState<AddRestaurantScreen> {
                 (value?.trim().length ?? 0) < 2 ? '請輸入至少 2 個字的店家名稱' : null,
           ),
           const SizedBox(height: 14),
+          DropdownButtonFormField<String>(
+            key: ValueKey(_city),
+            initialValue: _city,
+            decoration: const InputDecoration(
+              labelText: '縣市',
+              prefixIcon: Icon(Icons.map_outlined),
+            ),
+            items: [
+              for (final city in taiwanAdministrativeAreas.keys)
+                DropdownMenuItem(value: city, child: Text(city)),
+            ],
+            onChanged: _isSubmitting
+                ? null
+                : (value) => setState(() {
+                    _city = value;
+                    _district = null;
+                  }),
+            validator: (value) => value == null ? '請選擇縣市' : null,
+          ),
+          const SizedBox(height: 14),
+          DropdownButtonFormField<String>(
+            key: ValueKey('${_city}_$_district'),
+            initialValue: _district,
+            decoration: const InputDecoration(
+              labelText: '鄉鎮市區',
+              prefixIcon: Icon(Icons.location_city_outlined),
+            ),
+            items: [
+              for (final district in _districtOptions)
+                DropdownMenuItem(value: district, child: Text(district)),
+            ],
+            onChanged: _isSubmitting || _city == null
+                ? null
+                : (value) => setState(() => _district = value),
+            validator: (value) => value == null ? '請選擇鄉鎮市區' : null,
+          ),
+          const SizedBox(height: 14),
           TextFormField(
-            controller: _addressController,
+            controller: _streetController,
             enabled: !_isSubmitting,
             minLines: 1,
             maxLines: 2,
             decoration: const InputDecoration(
-              labelText: '店家地址',
-              hintText: '例如：台北市信義區市府路 45 號',
+              labelText: '路段與門牌',
+              hintText: '例如：市府路 45 號',
               prefixIcon: Icon(Icons.location_on_outlined),
             ),
             validator: (value) =>
-                (value?.trim().length ?? 0) < 3 ? '請輸入店家地址' : null,
+                (value?.trim().length ?? 0) < 2 ? '請輸入路段與門牌' : null,
           ),
         ],
       ),
