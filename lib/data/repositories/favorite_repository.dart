@@ -33,14 +33,37 @@ class FavoriteRepository {
         .collection('favorites')
         .orderBy('addedAt', descending: true)
         .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
+        .asyncMap((snapshot) async {
+          final favorites = snapshot.docs
               .map(
                 (document) =>
                     FavoriteRestaurant.fromMap(document.id, document.data()),
               )
-              .toList(growable: false),
-        );
+              .toList(growable: false);
+          final activeIds = await _readActiveRestaurantIds(
+            favorites.map((favorite) => favorite.restaurantId),
+          );
+          return favorites
+              .where((favorite) => activeIds.contains(favorite.restaurantId))
+              .toList(growable: false);
+        });
+  }
+
+  Future<Set<String>> _readActiveRestaurantIds(Iterable<String> ids) async {
+    final uniqueIds = ids.toSet().toList(growable: false);
+    if (uniqueIds.isEmpty) return const {};
+
+    final activeIds = <String>{};
+    for (var index = 0; index < uniqueIds.length; index += 30) {
+      final end = (index + 30).clamp(0, uniqueIds.length);
+      final snapshot = await _firestore
+          .collection('restaurants')
+          .where('status', isEqualTo: 'active')
+          .where(FieldPath.documentId, whereIn: uniqueIds.sublist(index, end))
+          .get();
+      activeIds.addAll(snapshot.docs.map((document) => document.id));
+    }
+    return activeIds;
   }
 
   Future<bool> toggleFavorite(Restaurant restaurant) async {
