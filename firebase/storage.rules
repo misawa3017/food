@@ -1,0 +1,32 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /restaurant_photos/{restaurantId}/{uploadId} {
+      function reservationPath() {
+        return /databases/(default)/documents/uploadReservations/$(uploadId);
+      }
+
+      function reservation() {
+        return firestore.get(reservationPath());
+      }
+
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.size <= 5 * 1024 * 1024
+        && request.resource.contentType == 'image/jpeg'
+        && firestore.exists(reservationPath())
+        && reservation().data.uid == request.auth.uid
+        && reservation().data.restaurantId == restaurantId
+        && reservation().data.storagePath
+          == 'restaurant_photos/' + restaurantId + '/' + uploadId
+        && reservation().data.status == 'pending'
+        && reservation().data.expiresAt > request.time;
+      allow update, delete: if false;
+    }
+
+    match /{object=**} {
+      allow read, write: if false;
+    }
+  }
+}

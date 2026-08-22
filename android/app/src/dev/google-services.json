@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "267091699106",
+    "project_id": "food-9a095",
+    "storage_bucket": "food-9a095.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:267091699106:android:e2d87ebe40382e9d9d3efb",
+        "android_client_info": {
+          "package_name": "com.misawa.food.food_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "267091699106-4335eb1sh48l0o5pl7vods1s0go5e3di.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.misawa.food.food_app",
+            "certificate_hash": "c9fd7fef44a1d8ebb9a3ca81c64df817bf3a0f20"
+          }
+        },
+        {
+          "client_id": "267091699106-g38psknr1htm73rm13tshbdo4h92ad9u.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDtmdTWjdYcYFVGT-5MsQJo6yBWk3QIU1Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "267091699106-g38psknr1htm73rm13tshbdo4h92ad9u.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "267091699106-ftin674etv75t38ft2ohf97rssrbvekr.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.misawa.food.foodApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

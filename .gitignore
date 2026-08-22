@@ -1,0 +1,225 @@
+
+# ============================================
+
+# Flutter / Dart
+
+# ============================================
+
+# Dart / Flutter 工具產生的暫存資料
+
+.dart_tool/
+.pub/
+.pub-cache/
+
+# Flutter 編譯輸出
+
+build/
+
+# Flutter 自動產生的 Plugin 資訊
+
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# 舊版 Dart package 設定
+
+.packages
+
+# ============================================
+
+# IDE / Editor
+
+# ============================================
+
+# Visual Studio Code
+
+.vscode/
+
+# IntelliJ IDEA / Android Studio
+
+.idea/
+
+# IntelliJ Module 設定
+
+*.iml
+
+# ============================================
+
+# Environment / Secrets
+
+# ============================================
+
+# 環境變數
+
+.env
+.env.*
+*.env
+
+# 私鑰 / 憑證
+
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Android Signing Key
+
+*.jks
+*.keystore
+
+# Firebase Admin Service Account
+
+*service-account*.json
+*serviceAccount*.json
+firebase-adminsdk*.json
+
+# ============================================
+
+# Firebase
+
+# ============================================
+
+# Firebase CLI 本機資料
+
+.firebase/
+
+# Firebase Debug Logs
+
+firebase-debug.log
+firebase-debug.*.log
+firestore-debug.log
+ui-debug.log
+
+# Firebase Emulator 匯出資料
+
+firebase-export/
+
+# ============================================
+
+# Android
+
+# ============================================
+
+# Gradle 暫存資料
+
+android/.gradle/
+
+# Android SDK 本機路徑
+
+android/local.properties
+
+# Android App Signing 設定
+
+android/key.properties
+
+# Android Build
+
+android/app/build/
+android/build/
+
+# ============================================
+
+# iOS / Xcode
+
+# ============================================
+
+# CocoaPods
+
+ios/Pods/
+
+# Flutter iOS 暫存資料
+
+ios/.symlinks/
+ios/Flutter/ephemeral/
+
+# iOS Build
+
+ios/build/
+
+# Xcode 使用者個人設定
+
+*.xcuserstate
+xcuserdata/
+
+# Xcode Derived Data
+
+DerivedData/
+
+# ============================================
+
+# Testing
+
+# ============================================
+
+# Flutter Test Coverage
+
+coverage/
+
+# Integration Test 暫存資料
+
+integration_test/.temp/
+
+# ============================================
+
+# Operating System
+
+# ============================================
+
+# macOS
+
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+
+*~
+
+# ============================================
+
+# Temporary Files
+
+# ============================================
+
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+
+tmp/
+temp/
+
+# ============================================
+
+# Backup Files
+
+# ============================================
+
+*.bak
+*.backup
+*.old
+
+# ============================================
+
+# Codex
+
+# ============================================
+
+# Codex 本機設定（如果專案內有）
+
+.codex/
+.claude/
+
+# 注意：
+
+# AGENTS.md 不要忽略。
+
+# 建議將 AGENTS.md commit 到 Git，
+
+# 讓所有開發者與 Codex 都使用相同的專案規範。

@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "default": "food-9a095",
+    "dev": "food-9a095",
+    "prod": "food-prod-9a095"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "name": "food-functions",
+  "private": true,
+  "main": "lib/index.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "serve": "npm run build && firebase emulators:start --only auth,firestore,functions,storage",
+    "seed:emulator": "node scripts/seed_emulator.js",
+    "verify:phase2:emulator": "node scripts/verify_phase2_emulator.js",
+    "verify:phase4:emulator": "node scripts/verify_phase4_rules.js",
+    "verify:phase5:emulator": "node scripts/verify_phase5_rules.js",
+    "test:rules:emulator": "node --test test/security_rules.test.js",
+    "test:emulator": "npm run build && node --test --test-concurrency=1 test/*.test.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^14.2.0",
+    "firebase-functions": "^7.3.2"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.1",
+    "@types/node": "^26.2.0",
+    "firebase": "^12.17.1",
+    "typescript": "^5.9.3"
+  }
+}

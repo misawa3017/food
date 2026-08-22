@@ -1,0 +1,35 @@
+{
+    "name": "管吃｜找附近好吃的",
+    "short_name": "管吃",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#F7F7F2",
+    "theme_color": "#E14F2A",
+    "description": "管吃：找附近好吃的店家。",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}

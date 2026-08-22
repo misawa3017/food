@@ -1,0 +1,112 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function restaurantIsActive(restaurantId) {
+      return get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.status == 'active';
+    }
+
+    function favoritePath(restaurantId) {
+      return /databases/$(database)/documents/users/$(request.auth.uid)/favorites/$(restaurantId);
+    }
+
+    function favoriteCountChangeIsValid(restaurantId) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['favoriteCount'])
+        && request.resource.data.favoriteCount is int
+        && request.resource.data.favoriteCount >= 0
+        && (
+          request.resource.data.favoriteCount == resource.data.favoriteCount + 1
+            && !exists(favoritePath(restaurantId))
+            && existsAfter(favoritePath(restaurantId))
+          || request.resource.data.favoriteCount == resource.data.favoriteCount - 1
+            && exists(favoritePath(restaurantId))
+            && !existsAfter(favoritePath(restaurantId))
+        );
+    }
+
+    match /restaurants/{restaurantId} {
+      allow list: if resource.data.status == 'active';
+      allow get: if resource.data.status == 'active' || resource.data.status == 'merged';
+      allow update: if signedIn()
+        && (
+          resource.data.status == 'active'
+          || resource.data.status == 'merged'
+            && request.resource.data.favoriteCount == resource.data.favoriteCount - 1
+        )
+        && favoriteCountChangeIsValid(restaurantId);
+      allow create, delete: if false;
+
+      match /photos/{photoId} {
+        allow read: if resource.data.status == 'active' && restaurantIsActive(restaurantId);
+        allow write: if false;
+      }
+
+      match /reviews/{reviewId} {
+        allow read: if resource.data.status == 'active' && restaurantIsActive(restaurantId);
+        allow write: if false;
+      }
+    }
+
+    match /users/{uid}/favorites/{restaurantId} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly([
+          'addedAt',
+          'restaurantName',
+          'restaurantCoverPhotoUrl',
+          'restaurantCategories'
+        ])
+        && request.resource.data.restaurantName is string
+        && request.resource.data.restaurantCategories is list
+        && getAfter(/databases/$(database)/documents/restaurants/$(restaurantId)).data.favoriteCount
+          == get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.favoriteCount + 1;
+      allow delete: if signedIn()
+        && request.auth.uid == uid
+        && getAfter(/databases/$(database)/documents/restaurants/$(restaurantId)).data.favoriteCount
+          == get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.favoriteCount - 1;
+      allow update: if false;
+    }
+
+    match /users/{uid}/importedPlaces/{placeId} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    match /admins/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+
+    match /reports/{requestId} {
+      allow read: if isAdmin()
+        || signedIn() && resource.data.reportedBy == request.auth.uid;
+      allow write: if false;
+    }
+
+    match /restaurantEditRequests/{requestId} {
+      allow read: if isAdmin()
+        || signedIn() && resource.data.submittedBy == request.auth.uid;
+      allow write: if false;
+    }
+
+    match /restaurantMergeRequests/{requestId} {
+      allow read: if isAdmin()
+        || signedIn() && resource.data.submittedBy == request.auth.uid;
+      allow write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
