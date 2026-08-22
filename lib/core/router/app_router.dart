@@ -71,6 +71,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             restaurantId: state.pathParameters['restaurantId']!,
             showPhotoUploadFailureNotice:
                 state.uri.queryParameters['photoUploadFailed'] == '1',
+            openEditSheet: state.uri.queryParameters['edit'] == '1',
           );
         },
       ),

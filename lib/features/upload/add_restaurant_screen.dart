@@ -166,11 +166,67 @@ class _AddRestaurantScreenState extends ConsumerState<AddRestaurantScreen> {
     );
     await ref.read(adServiceProvider).showInterstitial();
     if (!mounted) return;
-    final photoUploadFailed = submission.photoUploadFailed;
-    context.go(
-      '/restaurants/${submission.restaurantId}'
-      '${photoUploadFailed ? '?photoUploadFailed=1' : ''}',
+    final action = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('店家新增完成'),
+        content: Text(
+          submission.photoUploadFailed
+              ? '店家已新增，但照片上傳失敗；稍後仍可到店家頁重新上傳。'
+              : '店家已成功新增。接下來要做什麼？',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop('home'),
+            child: const Text('回首頁'),
+          ),
+          OutlinedButton(
+            onPressed: () => Navigator.of(dialogContext).pop('continue'),
+            child: const Text('繼續新增下一個店家'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop('edit'),
+            child: const Text('修改店家'),
+          ),
+        ],
+      ),
     );
+    if (!mounted || action == null) return;
+    if (action == 'home') {
+      context.go('/');
+      return;
+    }
+    if (action == 'continue') {
+      _resetFormForNextRestaurant();
+      return;
+    }
+
+    final queryParameters = <String, String>{'edit': '1'};
+    if (submission.photoUploadFailed) {
+      queryParameters['photoUploadFailed'] = '1';
+    }
+    context.go(
+      Uri(
+        path: '/restaurants/${submission.restaurantId}',
+        queryParameters: queryParameters,
+      ).toString(),
+    );
+  }
+
+  void _resetFormForNextRestaurant() {
+    _formKey.currentState?.reset();
+    _nameController.clear();
+    _addressController.clear();
+    _dishesController.clear();
+    setState(() {
+      _categories.clear();
+      _amenities.clear();
+      _photos = const [];
+      _location = null;
+      _progress = 0;
+    });
+    _showMessage('已清空表單，可以新增下一個店家。');
   }
 
   Future<void> _handleContributionError(ContributionException error) async {

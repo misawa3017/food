@@ -19,19 +19,30 @@ import 'restaurant_image.dart';
 import 'restaurant_moderation_sheets.dart';
 import 'review_form_sheet.dart';
 
-class RestaurantDetailScreen extends ConsumerWidget {
+class RestaurantDetailScreen extends ConsumerStatefulWidget {
   const RestaurantDetailScreen({
     super.key,
     required this.restaurantId,
     this.showPhotoUploadFailureNotice = false,
+    this.openEditSheet = false,
   });
 
   final String restaurantId;
   final bool showPhotoUploadFailureNotice;
+  final bool openEditSheet;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    ref.listen(restaurantProvider(restaurantId), (previous, next) {
+  ConsumerState<RestaurantDetailScreen> createState() =>
+      _RestaurantDetailScreenState();
+}
+
+class _RestaurantDetailScreenState
+    extends ConsumerState<RestaurantDetailScreen> {
+  bool _editSheetOpened = false;
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen(restaurantProvider(widget.restaurantId), (previous, next) {
       next.whenData((restaurant) {
         final targetId = restaurant?.mergedIntoRestaurantId;
         if (restaurant?.isMerged == true && targetId != null) {
@@ -46,13 +57,14 @@ class RestaurantDetailScreen extends ConsumerWidget {
       });
     });
 
-    final restaurantState = ref.watch(restaurantProvider(restaurantId));
+    final restaurantState = ref.watch(restaurantProvider(widget.restaurantId));
     final restaurant = restaurantState.asData?.value;
     return Scaffold(
       body: restaurantState.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => _ErrorBody(
-          onRetry: () => ref.invalidate(restaurantProvider(restaurantId)),
+          onRetry: () =>
+              ref.invalidate(restaurantProvider(widget.restaurantId)),
         ),
         data: (restaurant) {
           if (restaurant == null) {
@@ -61,9 +73,17 @@ class RestaurantDetailScreen extends ConsumerWidget {
           if (restaurant.isMerged) {
             return const Center(child: CircularProgressIndicator());
           }
+          if (widget.openEditSheet && !_editSheetOpened) {
+            _editSheetOpened = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                showRestaurantEditSheet(context, ref, restaurant);
+              }
+            });
+          }
           return _RestaurantDetailBody(
             restaurant: restaurant,
-            showPhotoUploadFailureNotice: showPhotoUploadFailureNotice,
+            showPhotoUploadFailureNotice: widget.showPhotoUploadFailureNotice,
           );
         },
       ),
