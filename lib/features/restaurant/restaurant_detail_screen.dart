@@ -116,6 +116,15 @@ class _RestaurantDetailBody extends ConsumerWidget {
           pinned: true,
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           foregroundColor: Theme.of(context).colorScheme.onSurface,
+          leading: IconButton(
+            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+            onPressed: () => Navigator.of(context).maybePop(),
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.black54,
+              foregroundColor: Colors.white,
+            ),
+            icon: const Icon(Icons.arrow_back),
+          ),
           flexibleSpace: FlexibleSpaceBar(
             background: _RestaurantHero(restaurant: restaurant),
           ),
