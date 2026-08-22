@@ -851,6 +851,46 @@ class _PhotoViewerDialogState extends State<_PhotoViewerDialog> {
                 );
               },
             ),
+            if (_currentIndex > 0)
+              Positioned(
+                left: 12,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: IconButton(
+                    tooltip: '上一張照片',
+                    onPressed: () => _pageController.previousPage(
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOut,
+                    ),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.black54,
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: const Icon(Icons.chevron_left, size: 32),
+                  ),
+                ),
+              ),
+            if (_currentIndex < widget.photos.length - 1)
+              Positioned(
+                right: 12,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: IconButton(
+                    tooltip: '下一張照片',
+                    onPressed: () => _pageController.nextPage(
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOut,
+                    ),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.black54,
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: const Icon(Icons.chevron_right, size: 32),
+                  ),
+                ),
+              ),
             Positioned(
               top: 8,
               right: 8,
