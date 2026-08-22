@@ -304,7 +304,7 @@ class ContributionRepository {
     required String requestKey,
     required void Function(double progress) onProgress,
   }) async {
-    final reservationResult = await _call('requestPhotoUpload', {
+    final reservationResult = await _callWithRetry('requestPhotoUpload', {
       'restaurantId': restaurantId,
       'count': photos.length,
       'idempotencyKey': requestKey,
@@ -335,7 +335,9 @@ class ContributionRepository {
         onProgress(0.1 + 0.8 * ((index + itemProgress) / photos.length));
       });
       await uploadTask;
-      await _call('finalizePhotoUpload', {'reservationId': reservationId});
+      await _callWithRetry('finalizePhotoUpload', {
+        'reservationId': reservationId,
+      });
       onProgress(0.1 + 0.9 * ((index + 1) / photos.length));
     }
   }
@@ -371,6 +373,30 @@ class ContributionRepository {
     );
     final result = await callable.call<Map<Object?, Object?>>(data);
     return result.data;
+  }
+
+  Future<Map<Object?, Object?>> _callWithRetry(
+    String name,
+    Map<String, Object?> data,
+  ) async {
+    const retryableCodes = {'internal', 'unavailable', 'deadline-exceeded'};
+    FirebaseFunctionsException? lastError;
+
+    for (var attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        return await _call(name, data);
+      } on FirebaseFunctionsException catch (error) {
+        lastError = error;
+        if (!retryableCodes.contains(error.code) || attempt == 2) {
+          rethrow;
+        }
+
+        // Cloud Functions 冷啟動或短暫網路錯誤時稍候再試，避免讓使用者重新選照片。
+        await Future<void>.delayed(Duration(milliseconds: 500 * (attempt + 1)));
+      }
+    }
+
+    throw lastError!;
   }
 
   ContributionException _contributionException(
