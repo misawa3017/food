@@ -189,9 +189,17 @@ class _AddRestaurantScreenState extends ConsumerState<AddRestaurantScreen> {
     RestaurantSubmissionResult submission,
   ) async {
     if (!mounted) return;
-    _showMessage(
-      submission.photoUploadFailed ? '店家已新增，但照片上傳失敗；可在店家頁重新上傳。' : '店家已新增。',
-    );
+    if (submission.photoUploadFailed) {
+      context.go(
+        Uri(
+          path: '/restaurants/${submission.restaurantId}',
+          queryParameters: const {'photoUploadFailed': '1'},
+        ).toString(),
+      );
+      return;
+    }
+
+    _showMessage('店家已新增。');
     await ref.read(adServiceProvider).showInterstitial();
     if (!mounted) return;
     final action = await showDialog<String>(
@@ -199,11 +207,7 @@ class _AddRestaurantScreenState extends ConsumerState<AddRestaurantScreen> {
       barrierDismissible: false,
       builder: (dialogContext) => AlertDialog(
         title: const Text('店家新增完成'),
-        content: Text(
-          submission.photoUploadFailed
-              ? '店家已新增，但照片上傳失敗；稍後仍可到店家頁重新上傳。'
-              : '店家已成功新增。接下來要做什麼？',
-        ),
+        content: const Text('店家已成功新增。接下來要做什麼？'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop('home'),
@@ -230,14 +234,10 @@ class _AddRestaurantScreenState extends ConsumerState<AddRestaurantScreen> {
       return;
     }
 
-    final queryParameters = <String, String>{'edit': '1'};
-    if (submission.photoUploadFailed) {
-      queryParameters['photoUploadFailed'] = '1';
-    }
     context.go(
       Uri(
         path: '/restaurants/${submission.restaurantId}',
-        queryParameters: queryParameters,
+        queryParameters: const {'edit': '1'},
       ).toString(),
     );
   }

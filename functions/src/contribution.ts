@@ -26,6 +26,8 @@ const dayMilliseconds = 24 * 60 * 60 * 1000;
 const reservationMilliseconds = 15 * 60 * 1000;
 const defaultRestaurantDailyLimit = 3;
 const maximumRestaurantDailyLimit = 100;
+const defaultPhotoDailyLimit = 20;
+const maximumPhotoDailyLimit = 100;
 const contributionLimitsReference = db
   .collection("systemSettings")
   .doc("contributionLimits");
@@ -133,6 +135,7 @@ interface ReviewRequestData {
 
 interface UpdateRestaurantContributionLimitData {
   restaurantDailyLimit?: unknown;
+  photoDailyLimit?: unknown;
 }
 
 interface AdminUpdateRestaurantData {
@@ -441,7 +444,14 @@ export async function handleFinalizePhotoUpload(
     if (numericValue(restaurant.get("photoCount")) >= 30) {
       throw new HttpsError("resource-exhausted", "每家店最多只能有 30 張照片。");
     }
-    await consumeContribution(transaction, uid, "photos", 1, 20);
+    const limitSettings = await transaction.get(contributionLimitsReference);
+    await consumeContribution(
+      transaction,
+      uid,
+      "photos",
+      1,
+      photoDailyLimitFromSettings(limitSettings.get("photoDailyLimit")),
+    );
     const photoReference = restaurantReference.collection("photos").doc();
     transaction.create(photoReference, {
       url,
@@ -1091,7 +1101,11 @@ async function consumeContribution(
       : currentWindow.toMillis() + dayMilliseconds - Date.now();
     throw new HttpsError(
       "resource-exhausted",
-      "已達 24 小時投稿上限。",
+      type === "restaurants"
+        ? "已達 24 小時店家投稿上限。"
+        : type === "photos"
+          ? "已達 24 小時照片投稿上限。"
+          : "已達 24 小時投稿上限。",
       {retryAfter: Math.max(1, Math.ceil(retryAfter / 1000))},
     );
   }
@@ -1246,6 +1260,7 @@ export async function handleGetRestaurantContributionLimit(
     restaurantDailyLimit: restaurantDailyLimitFromSettings(
       settings.get("restaurantDailyLimit"),
     ),
+    photoDailyLimit: photoDailyLimitFromSettings(settings.get("photoDailyLimit")),
   };
 }
 
@@ -1313,15 +1328,24 @@ export async function handleUpdateRestaurantContributionLimit(
     1,
     maximumRestaurantDailyLimit,
   );
+  const photoDailyLimit = request.data.photoDailyLimit == null
+    ? defaultPhotoDailyLimit
+    : finiteInteger(
+      request.data.photoDailyLimit,
+      "每日照片上限",
+      1,
+      maximumPhotoDailyLimit,
+    );
   await contributionLimitsReference.set(
     {
       restaurantDailyLimit,
+      photoDailyLimit,
       updatedBy: uid,
       updatedAt: FieldValue.serverTimestamp(),
     },
     {merge: true},
   );
-  return {restaurantDailyLimit};
+  return {restaurantDailyLimit, photoDailyLimit};
 }
 
 function restaurantDailyLimitFromSettings(value: unknown): number {
@@ -1331,6 +1355,15 @@ function restaurantDailyLimitFromSettings(value: unknown): number {
       value <= maximumRestaurantDailyLimit
     ? value
     : defaultRestaurantDailyLimit;
+}
+
+function photoDailyLimitFromSettings(value: unknown): number {
+  return typeof value === "number" &&
+      Number.isInteger(value) &&
+      value >= 1 &&
+      value <= maximumPhotoDailyLimit
+    ? value
+    : defaultPhotoDailyLimit;
 }
 
 function isRestaurantPhotoPath(
