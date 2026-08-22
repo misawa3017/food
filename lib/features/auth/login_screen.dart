@@ -17,6 +17,8 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
+  static const _genericSignInError = '登入失敗，請稍後再試。';
+
   bool _isLoading = false;
 
   Future<void> _signIn(Future<void> Function() action) async {
@@ -36,7 +38,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     } catch (_) {
       if (mounted) {
-        _showError('登入失敗，請稍後再試。');
+        _showError(_genericSignInError);
       }
     } finally {
       if (mounted) {
@@ -51,7 +53,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         'operation-not-allowed' => 'Firebase 尚未啟用這個登入方式。',
         'network-request-failed' => '網路連線失敗，請確認連線後重試。',
         'account-exists-with-different-credential' => '此信箱已使用其他登入方式，請先用原方式登入。',
-        _ => error.message ?? '登入失敗，請稍後再試。',
+        _ => error.message ?? _genericSignInError,
       };
     }
 
@@ -65,7 +67,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       };
     }
 
-    return '登入失敗，請稍後再試。';
+    return _genericSignInError;
   }
 
   void _showError(String message) {
