@@ -652,7 +652,10 @@ class _PhotoStrip extends ConsumerWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(18),
-                  child: RestaurantImage(imageUrl: photo.url),
+                  child: GestureDetector(
+                    onTap: () => _showPhotoViewer(context, photos, index),
+                    child: RestaurantImage(imageUrl: photo.url),
+                  ),
                 ),
                 if (isCover)
                   const Positioned(
@@ -688,6 +691,19 @@ class _PhotoStrip extends ConsumerWidget {
           );
         },
       ),
+    );
+  }
+
+  Future<void> _showPhotoViewer(
+    BuildContext context,
+    List<RestaurantPhoto> photos,
+    int initialIndex,
+  ) {
+    return showDialog<void>(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (context) =>
+          _PhotoViewerDialog(photos: photos, initialIndex: initialIndex),
     );
   }
 
@@ -781,6 +797,101 @@ class _PhotoStrip extends ConsumerWidget {
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     }
+  }
+}
+
+class _PhotoViewerDialog extends StatefulWidget {
+  const _PhotoViewerDialog({required this.photos, required this.initialIndex});
+
+  final List<RestaurantPhoto> photos;
+  final int initialIndex;
+
+  @override
+  State<_PhotoViewerDialog> createState() => _PhotoViewerDialogState();
+}
+
+class _PhotoViewerDialogState extends State<_PhotoViewerDialog> {
+  late final PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black,
+      child: SafeArea(
+        child: Stack(
+          children: [
+            PageView.builder(
+              controller: _pageController,
+              itemCount: widget.photos.length,
+              onPageChanged: (index) => setState(() => _currentIndex = index),
+              itemBuilder: (context, index) {
+                return InteractiveViewer(
+                  minScale: 1,
+                  maxScale: 4,
+                  child: SizedBox.expand(
+                    child: RestaurantImage(
+                      imageUrl: widget.photos[index].url,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                );
+              },
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: IconButton(
+                tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                onPressed: () => Navigator.of(context).pop(),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.white24,
+                  foregroundColor: Colors.white,
+                ),
+                icon: const Icon(Icons.close),
+              ),
+            ),
+            if (widget.photos.length > 1)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 16,
+                child: Center(
+                  child: DecoratedBox(
+                    decoration: const BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.all(Radius.circular(20)),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      child: Text(
+                        '${_currentIndex + 1} / ${widget.photos.length}',
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
