@@ -1099,13 +1099,17 @@ async function consumeContribution(
     const retryAfter = reset
       ? dayMilliseconds
       : currentWindow.toMillis() + dayMilliseconds - Date.now();
+    let limitMessage: string;
+    if (type === "restaurants") {
+      limitMessage = "已達 24 小時店家投稿上限。";
+    } else if (type === "photos") {
+      limitMessage = "已達 24 小時照片投稿上限。";
+    } else {
+      limitMessage = "已達 24 小時投稿上限。";
+    }
     throw new HttpsError(
       "resource-exhausted",
-      type === "restaurants"
-        ? "已達 24 小時店家投稿上限。"
-        : type === "photos"
-          ? "已達 24 小時照片投稿上限。"
-          : "已達 24 小時投稿上限。",
+      limitMessage,
       {retryAfter: Math.max(1, Math.ceil(retryAfter / 1000))},
     );
   }

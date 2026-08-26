@@ -42,6 +42,16 @@ class _RestaurantDetailScreenState
 
   @override
   Widget build(BuildContext context) {
+    _listenForMergedRestaurant(context);
+    final restaurantState = ref.watch(restaurantProvider(widget.restaurantId));
+    final restaurant = restaurantState.asData?.value;
+    return Scaffold(
+      body: _buildRestaurantBody(context, ref, restaurantState),
+      floatingActionButton: _buildMoreActions(restaurant),
+    );
+  }
+
+  void _listenForMergedRestaurant(BuildContext context) {
     ref.listen(restaurantProvider(widget.restaurantId), (previous, next) {
       next.whenData((restaurant) {
         final targetId = restaurant?.mergedIntoRestaurantId;
@@ -56,41 +66,51 @@ class _RestaurantDetailScreenState
         }
       });
     });
+  }
 
-    final restaurantState = ref.watch(restaurantProvider(widget.restaurantId));
-    final restaurant = restaurantState.asData?.value;
-    return Scaffold(
-      body: restaurantState.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) => _ErrorBody(
-          onRetry: () =>
-              ref.invalidate(restaurantProvider(widget.restaurantId)),
-        ),
-        data: (restaurant) {
-          if (restaurant == null) {
-            return const _MissingRestaurantBody();
-          }
-          if (restaurant.isMerged) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (widget.openEditSheet && !_editSheetOpened) {
-            _editSheetOpened = true;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                showRestaurantEditSheet(context, ref, restaurant);
-              }
-            });
-          }
-          return _RestaurantDetailBody(
-            restaurant: restaurant,
-            showPhotoUploadFailureNotice: widget.showPhotoUploadFailureNotice,
-          );
-        },
+  Widget _buildRestaurantBody(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<Restaurant?> state,
+  ) {
+    return state.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stackTrace) => _ErrorBody(
+        onRetry: () => ref.invalidate(restaurantProvider(widget.restaurantId)),
       ),
-      floatingActionButton: restaurant == null
-          ? null
-          : _MoreActionsButton(restaurant: restaurant),
+      data: (restaurant) => _buildRestaurantData(context, ref, restaurant),
     );
+  }
+
+  Widget _buildRestaurantData(
+    BuildContext context,
+    WidgetRef ref,
+    Restaurant? restaurant,
+  ) {
+    if (restaurant == null) {
+      return const _MissingRestaurantBody();
+    }
+    if (restaurant.isMerged) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (widget.openEditSheet && !_editSheetOpened) {
+      _editSheetOpened = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          showRestaurantEditSheet(context, ref, restaurant);
+        }
+      });
+    }
+    return _RestaurantDetailBody(
+      restaurant: restaurant,
+      showPhotoUploadFailureNotice: widget.showPhotoUploadFailureNotice,
+    );
+  }
+
+  Widget? _buildMoreActions(Restaurant? restaurant) {
+    return restaurant == null
+        ? null
+        : _MoreActionsButton(restaurant: restaurant);
   }
 }
 
