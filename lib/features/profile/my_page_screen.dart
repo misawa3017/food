@@ -14,6 +14,7 @@ import '../../data/providers/imported_places_providers.dart';
 import '../../data/providers/moderation_providers.dart';
 import '../../data/repositories/account_repository.dart';
 import '../../data/repositories/favorite_repository.dart';
+import '../../data/repositories/imported_places_repository.dart';
 
 /// Profile tab. Sign-in state, own submissions, admin entry land in Phase 1/5.
 class MyPageScreen extends ConsumerWidget {
@@ -396,6 +397,7 @@ class _ImportedPlacesSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final places = ref.watch(importedPlacesProvider);
+    final isAdmin = ref.watch(adminStatusProvider).asData?.value ?? false;
     return ExpansionTile(
       leading: const Icon(Icons.bookmark_outline),
       title: const Text('我的匯入收藏'),
@@ -404,24 +406,28 @@ class _ImportedPlacesSection extends ConsumerWidget {
         error: (error, stackTrace) => const Text('讀取失敗'),
         data: (items) => Text('${items.length} 筆'),
       ),
-      children: _buildPlaceChildren(context, places),
+      children: _buildPlaceChildren(context, ref, places, isAdmin),
     );
   }
 
   List<Widget> _buildPlaceChildren(
     BuildContext context,
+    WidgetRef ref,
     AsyncValue<List<ImportedPlace>> places,
+    bool isAdmin,
   ) {
     return places.when(
       loading: () => const [LinearProgressIndicator()],
       error: (error, stackTrace) => const [ListTile(title: Text('無法讀取匯入收藏。'))],
-      data: (items) => _buildPlaceItems(context, items),
+      data: (items) => _buildPlaceItems(context, ref, items, isAdmin),
     );
   }
 
   List<Widget> _buildPlaceItems(
     BuildContext context,
+    WidgetRef ref,
     List<ImportedPlace> places,
+    bool isAdmin,
   ) {
     if (places.isEmpty) {
       return const [ListTile(title: Text('尚未匯入 Google 地圖收藏。'))];
@@ -436,14 +442,65 @@ class _ImportedPlacesSection extends ConsumerWidget {
             onTap: () => context.push('/upload', extra: place),
             title: Text(place.sourceTitle),
             subtitle: Text(subtitle),
-            trailing: IconButton(
-              tooltip: '在地圖開啟',
-              icon: const Icon(Icons.open_in_new),
-              onPressed: () => _openMap(context, place),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: '在地圖開啟',
+                  icon: const Icon(Icons.open_in_new),
+                  onPressed: () => _openMap(context, place),
+                ),
+                if (isAdmin)
+                  IconButton(
+                    tooltip: '刪除匯入收藏',
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () => _removePlace(context, ref, place),
+                  ),
+              ],
             ),
           );
         })
         .toList(growable: false);
+  }
+
+  Future<void> _removePlace(
+    BuildContext context,
+    WidgetRef ref,
+    ImportedPlace place,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('刪除匯入收藏？'),
+        content: Text('將刪除「${place.sourceTitle}」這筆私人匯入收藏，不會影響公開店家資料。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton.tonal(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('刪除'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    try {
+      await ref.read(importedPlacesRepositoryProvider).remove(place.id);
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('已刪除匯入收藏。')));
+      }
+    } on ImportedPlacesException catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    }
   }
 
   Future<void> _openMap(BuildContext context, ImportedPlace place) async {

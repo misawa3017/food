@@ -4,6 +4,7 @@ export {
   clearImportedPlaces,
   importOriginalPlaces,
   previewImportedPlaces,
+  removeImportedPlace,
   saveImportedPlaces,
 } from "./imported_places";
 export {

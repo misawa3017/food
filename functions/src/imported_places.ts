@@ -33,6 +33,10 @@ interface SaveImportedPlacesData {
   places?: unknown;
 }
 
+interface RemoveImportedPlaceData {
+  placeId?: unknown;
+}
+
 interface SourcePlace {
   title: string;
   note: string | null;
@@ -62,6 +66,11 @@ export const saveImportedPlaces = onCall<SaveImportedPlacesData>(
 export const clearImportedPlaces = onCall(
   callableOptions,
   handleClearImportedPlaces,
+);
+
+export const removeImportedPlace = onCall<RemoveImportedPlaceData>(
+  callableOptions,
+  handleRemoveImportedPlace,
 );
 
 export const importOriginalPlaces = onCall<SaveImportedPlacesData>(
@@ -158,6 +167,26 @@ export async function handleClearImportedPlaces(
     deletedCount += snapshot.size;
   }
   return {deletedCount};
+}
+
+/** Removes one private imported place owned by the current administrator. */
+export async function handleRemoveImportedPlace(
+  request: CallableRequest<RemoveImportedPlaceData>,
+) {
+  const uid = await requireAdmin(request);
+  const placeId = typeof request.data.placeId === "string" ?
+    request.data.placeId.trim() : "";
+  if (!/^[a-f0-9]{64}$/.test(placeId)) {
+    throw new HttpsError("invalid-argument", "匯入收藏識別碼不正確。");
+  }
+  const reference = db.collection("users").doc(uid)
+    .collection("importedPlaces").doc(placeId);
+  const snapshot = await reference.get();
+  if (!snapshot.exists) {
+    throw new HttpsError("not-found", "找不到這筆匯入收藏。");
+  }
+  await reference.delete();
+  return {placeId};
 }
 
 export async function handleImportOriginalPlaces(

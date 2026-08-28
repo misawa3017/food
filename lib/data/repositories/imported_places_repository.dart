@@ -92,6 +92,14 @@ class ImportedPlacesRepository {
     }
   }
 
+  Future<void> remove(String placeId) async {
+    try {
+      await _call('removeImportedPlace', {'placeId': placeId});
+    } on FirebaseFunctionsException catch (error) {
+      throw ImportedPlacesException(error.message ?? '刪除匯入收藏失敗，請稍後再試。');
+    }
+  }
+
   Future<int> importOriginalPlaces(List<ImportedPlaceSource> places) async {
     try {
       final result = await _call('importOriginalPlaces', {
