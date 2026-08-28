@@ -25,6 +25,7 @@ class _GoogleSavedPlacesImportScreenState
   final Map<int, int> _candidateSelections = <int, int>{};
   bool _isResolving = false;
   bool _isSaving = false;
+  bool _isClearing = false;
   int _resolvedCount = 0;
 
   Future<void> _pickCsv() async {
@@ -141,6 +142,7 @@ class _GoogleSavedPlacesImportScreenState
   }
 
   Future<void> _clearImportedPlaces() async {
+    if (_isClearing) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -159,11 +161,14 @@ class _GoogleSavedPlacesImportScreenState
       ),
     );
     if (confirmed != true || !mounted) return;
+    setState(() => _isClearing = true);
     try {
       final deleted = await ref.read(importedPlacesRepositoryProvider).clear();
       _showMessage('已清除 $deleted 筆匯入資料。');
     } on ImportedPlacesException catch (error) {
       _showMessage(error.message);
+    } finally {
+      if (mounted) setState(() => _isClearing = false);
     }
   }
 
@@ -176,6 +181,8 @@ class _GoogleSavedPlacesImportScreenState
 
   @override
   Widget build(BuildContext context) {
+    final importedPlaces = ref.watch(importedPlacesProvider);
+    final importedCount = importedPlaces.asData?.value.length ?? 0;
     return Scaffold(
       appBar: AppBar(title: const Text('Google 地圖收藏匯入')),
       body: _matches.isEmpty
@@ -183,6 +190,8 @@ class _GoogleSavedPlacesImportScreenState
               sourceCount: _sourcePlaces.length,
               resolvedCount: _resolvedCount,
               isResolving: _isResolving,
+              isClearing: _isClearing,
+              importedCount: importedCount,
               onPickCsv: _pickCsv,
               onResolve: _resolveAll,
               onClear: _clearImportedPlaces,
@@ -231,6 +240,8 @@ class _ImportStart extends StatelessWidget {
     required this.sourceCount,
     required this.resolvedCount,
     required this.isResolving,
+    required this.isClearing,
+    required this.importedCount,
     required this.onPickCsv,
     required this.onResolve,
     required this.onClear,
@@ -239,6 +250,8 @@ class _ImportStart extends StatelessWidget {
   final int sourceCount;
   final int resolvedCount;
   final bool isResolving;
+  final bool isClearing;
+  final int importedCount;
   final VoidCallback onPickCsv;
   final VoidCallback onResolve;
   final VoidCallback onClear;
@@ -289,10 +302,18 @@ class _ImportStart extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 12),
-        TextButton.icon(
-          onPressed: isResolving ? null : onClear,
-          icon: const Icon(Icons.delete_outline),
-          label: const Text('清除先前匯入的收藏資料'),
+        OutlinedButton.icon(
+          onPressed: isResolving || isClearing || importedCount == 0
+              ? null
+              : onClear,
+          icon: isClearing
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.delete_outline),
+          label: Text(isClearing ? '正在清除匯入收藏…' : '清除全部 $importedCount 筆匯入收藏'),
         ),
       ],
     );

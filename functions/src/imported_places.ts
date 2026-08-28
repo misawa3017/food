@@ -141,14 +141,23 @@ export async function handleClearImportedPlaces(
   request: CallableRequest<unknown>,
 ) {
   const uid = await requireAdmin(request);
-  const snapshot = await db.collection("users").doc(uid)
-    .collection("importedPlaces").limit(500).get();
-  const batch = db.batch();
-  for (const document of snapshot.docs) {
-    batch.delete(document.ref);
+  const importedPlaces = db.collection("users").doc(uid)
+    .collection("importedPlaces");
+  let deletedCount = 0;
+
+  // Firestore 每個 batch 最多 500 個操作，因此分批處理所有匯入資料。
+  while (true) {
+    const snapshot = await importedPlaces.limit(400).get();
+    if (snapshot.empty) break;
+
+    const batch = db.batch();
+    for (const document of snapshot.docs) {
+      batch.delete(document.ref);
+    }
+    await batch.commit();
+    deletedCount += snapshot.size;
   }
-  await batch.commit();
-  return {deletedCount: snapshot.size, hasMore: snapshot.size === 500};
+  return {deletedCount};
 }
 
 export async function handleImportOriginalPlaces(
