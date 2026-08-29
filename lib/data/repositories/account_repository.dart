@@ -15,20 +15,32 @@ class AccountRepository {
   final AuthRepository _authRepository;
   final FirebaseFunctions _firebaseFunctions;
 
+  Future<String?> getPublicRecommenderName() async {
+    try {
+      final result = await _call('getPublicProfile', const {});
+      final value = result['recommenderName'];
+      return value is String && value.trim().isNotEmpty ? value : null;
+    } on FirebaseFunctionsException catch (error) {
+      throw AccountDeletionException(_functionsMessage(error));
+    }
+  }
+
+  Future<void> updatePublicRecommenderName(String name) async {
+    try {
+      await _call('updatePublicProfile', {'recommenderName': name});
+    } on FirebaseFunctionsException catch (error) {
+      throw AccountDeletionException(_functionsMessage(error));
+    }
+  }
+
   Future<void> deleteAccount() async {
     try {
       await _authRepository.reauthenticateForAccountDeletion();
-      final callable = _firebaseFunctions.httpsCallable(
-        'deleteAccount',
-        options: HttpsCallableOptions(
-          limitedUseAppCheckToken: !FirebaseEmulatorService.enabled,
-        ),
-      );
-      final result = await callable.call<Map<Object?, Object?>>({
+      final result = await _call('deleteAccount', {
         'confirmation': 'DELETE',
         'source': kIsWeb ? 'web' : 'app',
       });
-      if (result.data['status'] != 'completed') {
+      if (result['status'] != 'completed') {
         throw const AccountDeletionException('帳號刪除尚未完成，請稍後重試。');
       }
       await _authRepository.clearLocalSession();
@@ -37,6 +49,20 @@ class AccountRepository {
     } on FirebaseAuthException catch (error) {
       throw AccountDeletionException(error.message ?? '重新驗證登入失敗，請稍後再試。');
     }
+  }
+
+  Future<Map<Object?, Object?>> _call(
+    String name,
+    Map<String, Object?> data,
+  ) async {
+    final callable = _firebaseFunctions.httpsCallable(
+      name,
+      options: HttpsCallableOptions(
+        limitedUseAppCheckToken: !FirebaseEmulatorService.enabled,
+      ),
+    );
+    final result = await callable.call<Map<Object?, Object?>>(data);
+    return result.data;
   }
 
   String _functionsMessage(FirebaseFunctionsException error) {

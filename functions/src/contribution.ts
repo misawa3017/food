@@ -70,6 +70,10 @@ interface CreateRestaurantData {
   idempotencyKey?: unknown;
 }
 
+interface UpdatePublicProfileData {
+  recommenderName?: unknown;
+}
+
 interface RequestPhotoUploadData {
   restaurantId?: unknown;
   count?: unknown;
@@ -150,6 +154,13 @@ interface AdminRemoveRestaurantData {
 export const createRestaurant = onCall<CreateRestaurantData>(
   callableOptions,
   handleCreateRestaurant,
+);
+
+export const getPublicProfile = onCall(callableOptions, handleGetPublicProfile);
+
+export const updatePublicProfile = onCall<UpdatePublicProfileData>(
+  callableOptions,
+  handleUpdatePublicProfile,
 );
 
 export const requestPhotoUpload = onCall<RequestPhotoUploadData>(
@@ -237,6 +248,7 @@ export async function handleCreateRestaurant(
   request: CallableRequest<CreateRestaurantData>,
 ) {
   const uid = validateCallable(request);
+  const recommenderName = await getRecommenderName(uid);
   const name = requiredString(request.data.name, "店家名稱", 2, 80);
   const address = requiredString(request.data.address, "地址", 3, 200);
   const googleMapsUrl = optionalHttpsUrl(request.data.googleMapsUrl);
@@ -307,6 +319,7 @@ export async function handleCreateRestaurant(
       favoriteCount: 0,
       status: "active",
       createdBy: uid,
+      recommenderName,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
@@ -321,6 +334,33 @@ export async function handleCreateRestaurant(
   return result;
 }
 
+/** Returns the caller's optional public nickname without exposing account data. */
+export async function handleGetPublicProfile(request: CallableRequest<unknown>) {
+  const uid = validateCallable(request);
+  const recommenderName = await getRecommenderName(uid);
+  return {
+    recommenderName: recommenderName === anonymousRecommenderName
+      ? null
+      : recommenderName,
+  };
+}
+
+/** Saves the nickname shown beside restaurants created by the caller in future. */
+export async function handleUpdatePublicProfile(
+  request: CallableRequest<UpdatePublicProfileData>,
+) {
+  const uid = validateCallable(request);
+  const recommenderName = optionalRecommenderName(request.data.recommenderName);
+  await db.collection("users").doc(uid).set(
+    {
+      publicRecommenderName: recommenderName ?? FieldValue.delete(),
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    {merge: true},
+  );
+  return {recommenderName};
+}
+
 function optionalHttpsUrl(value: unknown): string | null {
   if (value == null || value === "") return null;
   if (typeof value !== "string" || value.length > 2048) {
@@ -333,6 +373,29 @@ function optionalHttpsUrl(value: unknown): string | null {
   } catch {
     throw new HttpsError("invalid-argument", "Google Maps 連結格式不正確。");
   }
+}
+
+const anonymousRecommenderName = "匿名美食家";
+
+async function getRecommenderName(uid: string): Promise<string> {
+  const snapshot = await db.collection("users").doc(uid).get();
+  const value = snapshot.get("publicRecommenderName");
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : anonymousRecommenderName;
+}
+
+function optionalRecommenderName(value: unknown): string | null {
+  if (value == null) return null;
+  if (typeof value !== "string") {
+    throw new HttpsError("invalid-argument", "公開暱稱格式不正確。");
+  }
+  const name = value.trim();
+  if (name.length === 0) return null;
+  if (name.length < 2 || name.length > 24) {
+    throw new HttpsError("invalid-argument", "公開暱稱需為 2 到 24 個字元。");
+  }
+  return name;
 }
 
 export async function handleRequestPhotoUpload(

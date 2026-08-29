@@ -14,3 +14,9 @@ final accountRepositoryProvider = Provider<AccountRepository>((ref) {
     firebaseFunctions: ref.watch(firebaseFunctionsProvider),
   );
 });
+
+final publicRecommenderNameProvider = FutureProvider<String?>((ref) async {
+  final user = ref.watch(authStateChangesProvider).asData?.value;
+  if (user == null) return null;
+  return ref.watch(accountRepositoryProvider).getPublicRecommenderName();
+});

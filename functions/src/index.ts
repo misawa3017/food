@@ -14,6 +14,7 @@ export {
   deleteReview,
   finalizePhotoUpload,
   getRestaurantContributionLimit,
+  getPublicProfile,
   mergeRestaurants,
   requestPhotoUpload,
   removeRestaurantPhoto,
@@ -25,4 +26,5 @@ export {
   submitReview,
   submitDuplicateRestaurant,
   updateRestaurantContributionLimit,
+  updatePublicProfile,
 } from "./contribution";

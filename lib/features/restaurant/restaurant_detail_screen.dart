@@ -428,6 +428,32 @@ class _OverviewCard extends StatelessWidget {
               padding: EdgeInsets.symmetric(vertical: 18),
               child: Divider(height: 1),
             ),
+            Row(
+              children: [
+                Icon(
+                  Icons.person_outline,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '推薦者',
+                        style: Theme.of(context).textTheme.labelLarge,
+                      ),
+                      const SizedBox(height: 4),
+                      Text('由 ${restaurant.recommenderName} 推薦'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 18),
+              child: Divider(height: 1),
+            ),
             _OverviewStats(restaurant: restaurant),
           ],
         ),

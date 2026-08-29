@@ -114,7 +114,7 @@ class _SignedOutProfile extends StatelessWidget {
   }
 }
 
-class _SignedInProfile extends StatefulWidget {
+class _SignedInProfile extends ConsumerStatefulWidget {
   const _SignedInProfile({
     required this.user,
     required this.favorites,
@@ -134,10 +134,10 @@ class _SignedInProfile extends StatefulWidget {
   final Future<void> Function() onDeleteAccount;
 
   @override
-  State<_SignedInProfile> createState() => _SignedInProfileState();
+  ConsumerState<_SignedInProfile> createState() => _SignedInProfileState();
 }
 
-class _SignedInProfileState extends State<_SignedInProfile> {
+class _SignedInProfileState extends ConsumerState<_SignedInProfile> {
   bool _isSigningOut = false;
   bool _isDeletingAccount = false;
 
@@ -228,9 +228,59 @@ class _SignedInProfileState extends State<_SignedInProfile> {
     }
   }
 
+  Future<void> _editRecommenderName(String? currentName) async {
+    final controller = TextEditingController(text: currentName ?? '');
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('公開推薦暱稱'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 24,
+          decoration: const InputDecoration(
+            hintText: '例如：Jason 的美食筆記',
+            helperText: '2 至 24 個字元；留白則顯示匿名美食家。',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+            child: const Text('儲存'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (result == null || !mounted) return;
+
+    try {
+      await ref
+          .read(accountRepositoryProvider)
+          .updatePublicRecommenderName(result);
+      ref.invalidate(publicRecommenderNameProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('公開推薦暱稱已儲存。')));
+      }
+    } on AccountDeletionException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = widget.user;
+    final recommenderName = ref.watch(publicRecommenderNameProvider);
 
     return ListView(
       padding: const EdgeInsets.all(24),
@@ -302,6 +352,17 @@ class _SignedInProfileState extends State<_SignedInProfile> {
               : _confirmAccountDeletion,
         ),
         const _ImportedPlacesSection(),
+        ListTile(
+          leading: const Icon(Icons.badge_outlined),
+          title: const Text('公開推薦暱稱'),
+          subtitle: recommenderName.when(
+            loading: () => const Text('讀取中…'),
+            error: (error, stackTrace) => const Text('匿名美食家'),
+            data: (name) => Text(name ?? '匿名美食家'),
+          ),
+          trailing: const Icon(Icons.edit_outlined),
+          onTap: () => _editRecommenderName(recommenderName.asData?.value),
+        ),
       ],
     );
   }
