@@ -606,10 +606,10 @@ class _RestaurantManagementState extends ConsumerState<_RestaurantManagement> {
               const SizedBox(width: 8),
               FilledButton(onPressed: _search, child: const Text('搜尋')),
               const SizedBox(width: 8),
-              IconButton(
-                tooltip: '認領匯入店家',
+              OutlinedButton.icon(
                 onPressed: _claimImportedRestaurantRecommenders,
-                icon: const Icon(Icons.person_add_alt_1_outlined),
+                icon: const Icon(Icons.person_add_alt_1_outlined, size: 18),
+                label: const Text('認領匯入店家'),
               ),
             ],
           ),
