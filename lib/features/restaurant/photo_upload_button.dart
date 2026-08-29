@@ -83,10 +83,10 @@ class _PhotoUploadButtonState extends ConsumerState<PhotoUploadButton> {
         ),
       );
     }
-    return TextButton.icon(
+    return FilledButton.tonalIcon(
       onPressed: _selectAndUpload,
       icon: const Icon(Icons.add_photo_alternate_outlined),
-      label: const Text('新增照片'),
+      label: const Text('補上傳照片'),
     );
   }
 }
