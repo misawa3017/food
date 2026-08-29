@@ -151,6 +151,10 @@ interface AdminRemoveRestaurantData {
   restaurantId?: unknown;
 }
 
+interface ClaimRestaurantRecommenderData {
+  restaurantId?: unknown;
+}
+
 export const createRestaurant = onCall<CreateRestaurantData>(
   callableOptions,
   handleCreateRestaurant,
@@ -242,6 +246,17 @@ export const adminUpdateRestaurant = onCall<AdminUpdateRestaurantData>(
 export const adminRemoveRestaurant = onCall<AdminRemoveRestaurantData>(
   callableOptions,
   handleAdminRemoveRestaurant,
+);
+
+export const claimRestaurantRecommender =
+  onCall<ClaimRestaurantRecommenderData>(
+    callableOptions,
+    handleClaimRestaurantRecommender,
+  );
+
+export const claimImportedRestaurantRecommenders = onCall(
+  callableOptions,
+  handleClaimImportedRestaurantRecommenders,
 );
 
 export async function handleCreateRestaurant(
@@ -1408,6 +1423,92 @@ export async function handleAdminRemoveRestaurant(
   });
 }
 
+/**
+ * 讓管理者逐筆認領舊店家的公開推薦資訊，避免誤認領其他投稿者的店家。
+ */
+export async function handleClaimRestaurantRecommender(
+  request: CallableRequest<ClaimRestaurantRecommenderData>,
+) {
+  const uid = validateCallable(request);
+  await requireAdmin(uid);
+  const restaurantId = documentId(request.data.restaurantId, "店家");
+  const recommenderName = await getRecommenderName(uid);
+  const restaurantReference = db.collection("restaurants").doc(restaurantId);
+
+  return db.runTransaction(async (transaction) => {
+    const restaurant = await transaction.get(restaurantReference);
+    if (!restaurant.exists || restaurant.get("status") !== "active") {
+      throw new HttpsError("not-found", "找不到可認領的店家。");
+    }
+    transaction.update(restaurantReference, {
+      createdBy: uid,
+      recommenderName,
+      recommenderClaimedBy: uid,
+      recommenderClaimedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    return {restaurantId, recommenderName};
+  });
+}
+
+/**
+ * 只認領能和目前管理者匯入收藏明確對應的舊店家，絕不改動其他人擁有的店家。
+ */
+export async function handleClaimImportedRestaurantRecommenders(
+  request: CallableRequest<unknown>,
+) {
+  const uid = validateCallable(request);
+  await requireAdmin(uid);
+  const recommenderName = await getRecommenderName(uid);
+  const [importedPlaces, restaurants] = await Promise.all([
+    db.collection("users").doc(uid).collection("importedPlaces").get(),
+    db.collection("restaurants").where("status", "==", "active").get(),
+  ]);
+
+  const importedGoogleMapsUrls = new Set<string>();
+  const importedNameAddressPairs = new Set<string>();
+  for (const place of importedPlaces.docs) {
+    const googleMapsUrl = normalizedUrl(place.get("sourceGoogleMapsUrl"));
+    if (googleMapsUrl != null) importedGoogleMapsUrls.add(googleMapsUrl);
+
+    const address = normalizedAddress(place.get("address"));
+    for (const name of [place.get("sourceTitle"), place.get("name")]) {
+      if (typeof name === "string" && address != null) {
+        importedNameAddressPairs.add(`${normalizeName(name)}|${address}`);
+      }
+    }
+  }
+
+  const writer = db.bulkWriter();
+  let claimedCount = 0;
+  for (const restaurant of restaurants.docs) {
+    const owner = restaurant.get("createdBy");
+    if (owner != null && owner !== uid) continue;
+
+    const sameGoogleMapsUrl = importedGoogleMapsUrls.has(
+      normalizedUrl(restaurant.get("googleMapsUrl")) ?? "",
+    );
+    const name = restaurant.get("name");
+    const address = normalizedAddress(restaurant.get("address"));
+    const sameNameAndAddress =
+      typeof name === "string" &&
+      address != null &&
+      importedNameAddressPairs.has(`${normalizeName(name)}|${address}`);
+    if (!sameGoogleMapsUrl && !sameNameAndAddress) continue;
+
+    writer.update(restaurant.ref, {
+      createdBy: uid,
+      recommenderName,
+      recommenderClaimedBy: uid,
+      recommenderClaimedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    claimedCount += 1;
+  }
+  await writer.close();
+  return {claimedCount, importedPlaceCount: importedPlaces.size};
+}
+
 export async function handleUpdateRestaurantContributionLimit(
   request: CallableRequest<UpdateRestaurantContributionLimitData>,
 ) {
@@ -1584,6 +1685,16 @@ function validIdempotencyKey(value: unknown): string {
 
 function normalizeName(value: string): string {
   return value.normalize("NFKC").toLowerCase().replace(/[\s\p{P}\p{S}]+/gu, "");
+}
+
+function normalizedAddress(value: unknown): string | null {
+  if (typeof value !== "string" || value.trim().length === 0) return null;
+  return value.normalize("NFKC").toLowerCase().replace(/\s+/g, "");
+}
+
+function normalizedUrl(value: unknown): string | null {
+  if (typeof value !== "string" || value.trim().length === 0) return null;
+  return value.trim();
 }
 
 function numericValue(value: unknown): number {

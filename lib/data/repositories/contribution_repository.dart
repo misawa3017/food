@@ -287,6 +287,30 @@ class ContributionRepository {
     }
   }
 
+  Future<void> claimRestaurantRecommender(String restaurantId) async {
+    try {
+      await _call('claimRestaurantRecommender', {'restaurantId': restaurantId});
+    } on FirebaseFunctionsException catch (error) {
+      throw _contributionException(error, _newIdempotencyKey());
+    }
+  }
+
+  Future<int> claimImportedRestaurantRecommenders() async {
+    try {
+      final result = await _call(
+        'claimImportedRestaurantRecommenders',
+        const {},
+      );
+      final claimedCount = result['claimedCount'];
+      if (claimedCount is! num || claimedCount < 0) {
+        throw const ContributionException('認領結果格式不正確。');
+      }
+      return claimedCount.toInt();
+    } on FirebaseFunctionsException catch (error) {
+      throw _contributionException(error, _newIdempotencyKey());
+    }
+  }
+
   Future<void> _callContribution(
     String functionName,
     Map<String, Object?> data,

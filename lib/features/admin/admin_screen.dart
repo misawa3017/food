@@ -359,6 +359,88 @@ class _RestaurantManagementState extends ConsumerState<_RestaurantManagement> {
     }
   }
 
+  Future<void> _claimRestaurantRecommender(Restaurant restaurant) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('設為我推薦'),
+        content: Text(
+          '要將「${restaurant.name}」標記為由你推薦嗎？\n之後更新公開推薦暱稱時，這家店也會一併更新。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('確認'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await ref
+          .read(contributionRepositoryProvider)
+          .claimRestaurantRecommender(restaurant.id);
+      ref.invalidate(searchRestaurantsProvider(_query));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('已設為你推薦的店家。')),
+        );
+      }
+    } on ContributionException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    }
+  }
+
+  Future<void> _claimImportedRestaurantRecommenders() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('認領匯入店家'),
+        content: const Text(
+          '系統會將你的匯入收藏中，能以 Google Maps 連結或店名加地址明確對應的既有店家設為你推薦。\n\n不會改動已屬於其他使用者的店家。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('開始認領'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final count = await ref
+          .read(contributionRepositoryProvider)
+          .claimImportedRestaurantRecommenders();
+      ref.invalidate(searchRestaurantsProvider(_query));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('已將 $count 家匯入店家設為你推薦。')),
+        );
+      }
+    } on ContributionException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    }
+  }
+
   Future<void> _showPhotoManager(Restaurant restaurant) async {
     await showModalBottomSheet<void>(
       context: context,
@@ -523,6 +605,12 @@ class _RestaurantManagementState extends ConsumerState<_RestaurantManagement> {
               ),
               const SizedBox(width: 8),
               FilledButton(onPressed: _search, child: const Text('搜尋')),
+              const SizedBox(width: 8),
+              IconButton(
+                tooltip: '認領匯入店家',
+                onPressed: _claimImportedRestaurantRecommenders,
+                icon: const Icon(Icons.person_add_alt_1_outlined),
+              ),
             ],
           ),
         ),
@@ -546,6 +634,12 @@ class _RestaurantManagementState extends ConsumerState<_RestaurantManagement> {
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            IconButton(
+                              tooltip: '設為我推薦',
+                              onPressed: () =>
+                                  _claimRestaurantRecommender(restaurant),
+                              icon: const Icon(Icons.person_add_alt_1_outlined),
+                            ),
                             IconButton(
                               tooltip: '管理照片',
                               onPressed: () => _showPhotoManager(restaurant),

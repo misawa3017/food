@@ -10,6 +10,8 @@ export {
 export {
   adminRemoveRestaurant,
   adminUpdateRestaurant,
+  claimImportedRestaurantRecommenders,
+  claimRestaurantRecommender,
   createRestaurant,
   deleteReview,
   finalizePhotoUpload,
