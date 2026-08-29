@@ -82,7 +82,7 @@ class RestaurantCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: textTheme.titleMedium,
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Wrap(
                     spacing: 12,
                     runSpacing: 6,
@@ -92,7 +92,12 @@ class RestaurantCard extends StatelessWidget {
                         _DistanceLabel(distanceMeters: distanceMeters!),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 2),
+                  _MetadataLabel(
+                    icon: Icons.person_outline,
+                    label: '由 ${restaurant.recommenderName} 推薦',
+                  ),
+                  const SizedBox(height: 4),
                   Text(
                     restaurant.address.isEmpty ? '尚未提供地址' : restaurant.address,
                     maxLines: 1,
@@ -101,7 +106,7 @@ class RestaurantCard extends StatelessWidget {
                       color: colorScheme.onSurface.withValues(alpha: 0.62),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
                       Expanded(
