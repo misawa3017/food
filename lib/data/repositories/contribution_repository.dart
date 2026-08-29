@@ -98,6 +98,22 @@ class ContributionRepository {
     }
   }
 
+  Future<void> updateRestaurantLocation({
+    required String restaurantId,
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      await _call('updateRestaurantLocation', {
+        'restaurantId': restaurantId,
+        'latitude': latitude,
+        'longitude': longitude,
+      });
+    } on FirebaseFunctionsException catch (error) {
+      throw _contributionException(error, _newIdempotencyKey());
+    }
+  }
+
   Future<void> setRestaurantCoverPhoto({
     required String restaurantId,
     required String photoId,

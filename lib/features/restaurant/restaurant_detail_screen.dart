@@ -16,6 +16,7 @@ import 'duplicate_restaurant_sheet.dart';
 import 'favorite_button.dart';
 import 'photo_upload_button.dart';
 import 'restaurant_image.dart';
+import 'restaurant_location_update_button.dart';
 import 'restaurant_moderation_sheets.dart';
 import 'review_form_sheet.dart';
 
@@ -128,6 +129,8 @@ class _RestaurantDetailBody extends ConsumerWidget {
     final photos = ref.watch(restaurantPhotosProvider(restaurant.id));
     final reviews = ref.watch(restaurantReviewsProvider(restaurant.id));
     final currentUid = ref.watch(authStateChangesProvider).asData?.value?.uid;
+    final canDirectlyUpdate =
+        currentUid != null && currentUid == restaurant.createdBy;
 
     return CustomScrollView(
       slivers: [
@@ -162,7 +165,10 @@ class _RestaurantDetailBody extends ConsumerWidget {
                       const _PhotoUploadFailureNotice(),
                       const SizedBox(height: 20),
                     ],
-                    _OverviewCard(restaurant: restaurant),
+                    _OverviewCard(
+                      restaurant: restaurant,
+                      canDirectlyUpdate: canDirectlyUpdate,
+                    ),
                     const SizedBox(height: 20),
                     _ActionRow(restaurant: restaurant),
                     const SizedBox(height: 36),
@@ -179,7 +185,9 @@ class _RestaurantDetailBody extends ConsumerWidget {
                     _SectionHeader(
                       title: '店家照片',
                       subtitle: '一起補足這家店的模樣',
-                      action: PhotoUploadButton(restaurantId: restaurant.id),
+                      action: canDirectlyUpdate
+                          ? PhotoUploadButton(restaurantId: restaurant.id)
+                          : null,
                     ),
                     const SizedBox(height: 12),
                     photos.when(
@@ -389,9 +397,13 @@ class _HeroTag extends StatelessWidget {
 }
 
 class _OverviewCard extends StatelessWidget {
-  const _OverviewCard({required this.restaurant});
+  const _OverviewCard({
+    required this.restaurant,
+    required this.canDirectlyUpdate,
+  });
 
   final Restaurant restaurant;
+  final bool canDirectlyUpdate;
 
   @override
   Widget build(BuildContext context) {
@@ -424,6 +436,15 @@ class _OverviewCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (canDirectlyUpdate) ...[
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: RestaurantLocationUpdateButton(
+                  restaurantId: restaurant.id,
+                ),
+              ),
+            ],
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 18),
               child: Divider(height: 1),

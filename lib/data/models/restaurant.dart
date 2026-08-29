@@ -19,6 +19,7 @@ class Restaurant {
     required this.status,
     required this.mergedIntoRestaurantId,
     required this.createdAt,
+    this.createdBy,
     this.recommenderName = '匿名美食家',
   });
 
@@ -41,6 +42,7 @@ class Restaurant {
       status: data['status'] as String? ?? 'removed',
       mergedIntoRestaurantId: _nullableString(data['mergedIntoRestaurantId']),
       createdAt: _dateTime(data['createdAt']),
+      createdBy: _nullableString(data['createdBy']),
       recommenderName: _nullableString(data['recommenderName']) ?? '匿名美食家',
     );
   }
@@ -62,6 +64,7 @@ class Restaurant {
   final String status;
   final String? mergedIntoRestaurantId;
   final DateTime? createdAt;
+  final String? createdBy;
   final String recommenderName;
 
   double get averageRating => ratingCount == 0 ? 0 : ratingSum / ratingCount;

@@ -28,5 +28,6 @@ export {
   submitReview,
   submitDuplicateRestaurant,
   updateRestaurantContributionLimit,
+  updateRestaurantLocation,
   updatePublicProfile,
 } from "./contribution";

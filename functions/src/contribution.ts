@@ -80,6 +80,12 @@ interface RequestPhotoUploadData {
   idempotencyKey?: unknown;
 }
 
+interface UpdateRestaurantLocationData {
+  restaurantId?: unknown;
+  latitude?: unknown;
+  longitude?: unknown;
+}
+
 interface FinalizePhotoUploadData {
   reservationId?: unknown;
 }
@@ -170,6 +176,11 @@ export const updatePublicProfile = onCall<UpdatePublicProfileData>(
 export const requestPhotoUpload = onCall<RequestPhotoUploadData>(
   callableOptions,
   handleRequestPhotoUpload,
+);
+
+export const updateRestaurantLocation = onCall<UpdateRestaurantLocationData>(
+  callableOptions,
+  handleUpdateRestaurantLocation,
 );
 
 export const finalizePhotoUpload = onCall<FinalizePhotoUploadData>(
@@ -456,6 +467,13 @@ export async function handleRequestPhotoUpload(
     if (!restaurant.exists || restaurant.get("status") !== "active") {
       throw new HttpsError("not-found", "找不到可上傳照片的店家。");
     }
+    // 直接補照片僅開放給原始推薦者，其他使用者必須透過資料修正流程。
+    if (restaurant.get("createdBy") !== uid) {
+      throw new HttpsError(
+        "permission-denied",
+        "只有推薦此店家的使用者可以補上傳照片。",
+      );
+    }
     const photoCount = numericValue(restaurant.get("photoCount"));
     if (photoCount + count > 30) {
       throw new HttpsError("resource-exhausted", "每家店最多只能有 30 張照片。");
@@ -488,6 +506,44 @@ export async function handleRequestPhotoUpload(
     });
     return {reservations};
   });
+}
+
+/** Updates a restaurant's coordinates from the original recommender's current location. */
+export async function handleUpdateRestaurantLocation(
+  request: CallableRequest<UpdateRestaurantLocationData>,
+) {
+  const uid = validateCallable(request);
+  const restaurantId = documentId(request.data.restaurantId, "店家");
+  const coordinates = optionalCoordinates(
+    request.data.latitude,
+    request.data.longitude,
+  );
+  if (coordinates === null) {
+    throw new HttpsError("invalid-argument", "請提供目前位置的座標。");
+  }
+  const restaurantReference = db.collection("restaurants").doc(restaurantId);
+
+  await db.runTransaction(async (transaction) => {
+    const restaurant = await transaction.get(restaurantReference);
+    if (!restaurant.exists || restaurant.get("status") !== "active") {
+      throw new HttpsError("not-found", "找不到可更新座標的店家。");
+    }
+    // 店家座標會影響附近搜尋結果，因此只讓原始推薦者直接更新。
+    if (restaurant.get("createdBy") !== uid) {
+      throw new HttpsError(
+        "permission-denied",
+        "只有推薦此店家的使用者可以使用目前位置更新座標。",
+      );
+    }
+    transaction.update(restaurantReference, {
+      geo: new GeoPoint(coordinates.latitude, coordinates.longitude),
+      geohash: encodeGeohash(coordinates.latitude, coordinates.longitude),
+      locationUpdatedBy: uid,
+      locationUpdatedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
+  return {restaurantId};
 }
 
 export async function handleFinalizePhotoUpload(
