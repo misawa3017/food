@@ -345,12 +345,13 @@ export async function handleGetPublicProfile(request: CallableRequest<unknown>) 
   };
 }
 
-/** Saves the nickname shown beside restaurants created by the caller in future. */
+/** Saves the caller's nickname and synchronizes it to their existing stores. */
 export async function handleUpdatePublicProfile(
   request: CallableRequest<UpdatePublicProfileData>,
 ) {
   const uid = validateCallable(request);
   const recommenderName = optionalRecommenderName(request.data.recommenderName);
+  const storedName = recommenderName ?? anonymousRecommenderName;
   await db.collection("users").doc(uid).set(
     {
       publicRecommenderName: recommenderName ?? FieldValue.delete(),
@@ -358,7 +359,11 @@ export async function handleUpdatePublicProfile(
     },
     {merge: true},
   );
-  return {recommenderName};
+  const updatedRestaurantCount = await synchronizeRecommenderName(
+    uid,
+    storedName,
+  );
+  return {recommenderName, updatedRestaurantCount};
 }
 
 function optionalHttpsUrl(value: unknown): string | null {
@@ -396,6 +401,25 @@ function optionalRecommenderName(value: unknown): string | null {
     throw new HttpsError("invalid-argument", "公開暱稱需為 2 到 24 個字元。");
   }
   return name;
+}
+
+/** Keeps public attribution current without changing store content timestamps. */
+async function synchronizeRecommenderName(
+  uid: string,
+  recommenderName: string,
+): Promise<number> {
+  const snapshot = await db
+    .collection("restaurants")
+    .where("createdBy", "==", uid)
+    .get();
+  if (snapshot.empty) return 0;
+
+  const writer = db.bulkWriter();
+  for (const restaurant of snapshot.docs) {
+    writer.update(restaurant.ref, {recommenderName});
+  }
+  await writer.close();
+  return snapshot.size;
 }
 
 export async function handleRequestPhotoUpload(

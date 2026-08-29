@@ -259,14 +259,20 @@ class _SignedInProfileState extends ConsumerState<_SignedInProfile> {
     if (result == null || !mounted) return;
 
     try {
-      await ref
+      final updatedRestaurantCount = await ref
           .read(accountRepositoryProvider)
           .updatePublicRecommenderName(result);
       ref.invalidate(publicRecommenderNameProvider);
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('公開推薦暱稱已儲存。')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              updatedRestaurantCount == 0
+                  ? '公開推薦暱稱已儲存。'
+                  : '公開推薦暱稱已儲存，並更新 $updatedRestaurantCount 家店家。',
+            ),
+          ),
+        );
       }
     } on AccountDeletionException catch (error) {
       if (mounted) {

@@ -25,9 +25,13 @@ class AccountRepository {
     }
   }
 
-  Future<void> updatePublicRecommenderName(String name) async {
+  Future<int> updatePublicRecommenderName(String name) async {
     try {
-      await _call('updatePublicProfile', {'recommenderName': name});
+      final result = await _call('updatePublicProfile', {
+        'recommenderName': name,
+      });
+      final updatedCount = result['updatedRestaurantCount'];
+      return updatedCount is num ? updatedCount.toInt() : 0;
     } on FirebaseFunctionsException catch (error) {
       throw AccountDeletionException(_functionsMessage(error));
     }

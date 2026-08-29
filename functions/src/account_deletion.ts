@@ -270,7 +270,10 @@ async function anonymizeOwnedData(uid: string): Promise<void> {
   await Promise.all([
     anonymizeQuery(
       db.collection("restaurants").where("createdBy", "==", uid),
-      {createdBy: "deleted"},
+      {
+        createdBy: "deleted",
+        recommenderName: "匿名美食家",
+      },
     ),
     anonymizeQuery(db.collection("reports").where("reportedBy", "==", uid), {
       reportedBy: "deleted",
