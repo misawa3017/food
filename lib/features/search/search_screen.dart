@@ -29,11 +29,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   static const _maximumNearbyRadiusKm = 50;
 
   final _searchController = TextEditingController();
-  RestaurantSearchQuery _query = const RestaurantSearchQuery();
+  // 搜尋導覽頁只顯示最新 10 筆，避免首次開啟時讀取過多店家資料。
+  RestaurantSearchQuery _query = const RestaurantSearchQuery(limit: 10);
   _SearchMode _mode = _SearchMode.keyword;
   double _nearbyRadiusKm = 10;
   bool _favoriteNearbyEnabled = false;
-  bool _hasKeywordSearch = false;
 
   @override
   void dispose() {
@@ -46,9 +46,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       _query = RestaurantSearchQuery(
         keyword: _searchController.text,
         category: _query.category,
+        limit: _query.limit,
       );
-      _hasKeywordSearch =
-          _searchController.text.trim().isNotEmpty || _query.category != null;
     });
   }
 
@@ -57,9 +56,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       _query = RestaurantSearchQuery(
         keyword: _searchController.text,
         category: category,
+        limit: _query.limit,
       );
-      _hasKeywordSearch =
-          _searchController.text.trim().isNotEmpty || category != null;
     });
   }
 
@@ -212,30 +210,15 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   }
 
   Widget _buildKeywordResults() {
-    if (!_hasKeywordSearch) {
-      return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.manage_search_outlined, size: 44),
-            SizedBox(height: 12),
-            Text('輸入店名開始搜尋'),
-          ],
-        ),
-      );
-    }
-
-    final searchCatalog = ref.watch(searchCatalogProvider);
-    return searchCatalog.when(
+    final restaurants = ref.watch(searchRestaurantsProvider(_query));
+    return restaurants.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stackTrace) =>
-          _SearchError(onRetry: () => ref.invalidate(searchCatalogProvider)),
-      data: (catalog) {
-        final items = _query.filterCatalog(catalog);
-        return items.isEmpty
-            ? const Center(child: Text('找不到符合條件的店家。'))
-            : _SearchResults(restaurants: items);
-      },
+      error: (error, stackTrace) => _SearchError(
+        onRetry: () => ref.invalidate(searchRestaurantsProvider(_query)),
+      ),
+      data: (items) => items.isEmpty
+          ? const Center(child: Text('找不到符合條件的店家。'))
+          : _SearchResults(restaurants: items),
     );
   }
 

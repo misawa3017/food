@@ -285,8 +285,7 @@ void main() {
 
     expect(find.text('全部'), findsOneWidget);
     expect(find.text('日式'), findsWidgets);
-    expect(find.text('輸入店名開始搜尋'), findsOneWidget);
-    expect(find.text('測試食堂'), findsNothing);
+    expect(find.text('測試食堂'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField), '測試');
     await tester.tap(find.byIcon(Icons.arrow_forward));
