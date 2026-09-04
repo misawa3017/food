@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 
-import '../../data/providers/restaurant_providers.dart';
-
 class LoadMoreRestaurantsButton extends StatelessWidget {
   const LoadMoreRestaurantsButton({
     super.key,
-    required this.state,
+    this.isLoading = false,
+    this.errorMessage,
     required this.onPressed,
   });
 
-  final PaginatedRestaurantSearchState state;
+  final bool isLoading;
+  final String? errorMessage;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    if (state.isLoadingMore) {
+    if (isLoading) {
       return const Padding(
         padding: EdgeInsets.all(16),
         child: SizedBox(
@@ -29,9 +29,9 @@ class LoadMoreRestaurantsButton extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (state.loadMoreError != null) ...[
+          if (errorMessage != null) ...[
             Text(
-              state.loadMoreError!,
+              errorMessage!,
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
             const SizedBox(height: 8),

@@ -10,6 +10,7 @@ import '../../data/models/restaurant.dart';
 import '../../data/providers/location_providers.dart';
 import '../../data/providers/restaurant_providers.dart';
 import '../restaurant/restaurant_card.dart';
+import '../search/load_more_restaurants_button.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -84,6 +85,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               },
                             )
                           : _NearbyFeed(
+                              key: ValueKey(query),
                               result: nearby,
                               onRefresh: () async {
                                 ref.invalidate(currentLocationProvider);
@@ -203,7 +205,7 @@ class _RadiusSelector extends StatelessWidget {
 }
 
 class _NearbyFeed extends StatelessWidget {
-  const _NearbyFeed({required this.result, required this.onRefresh});
+  const _NearbyFeed({super.key, required this.result, required this.onRefresh});
 
   final NearbySearchResult result;
   final Future<void> Function() onRefresh;
@@ -232,13 +234,79 @@ class _NearbyFeed extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: RefreshIndicator(
+          child: _PagedNearbyRestaurantList(
+            nearbyRestaurants: result.restaurants,
             onRefresh: onRefresh,
-            child: _RestaurantList(nearbyRestaurants: result.restaurants),
           ),
         ),
       ],
     );
+  }
+}
+
+/// 附近結果已依距離排序，因此在本機按順序分批呈現，不會漏掉較近店家。
+class _PagedNearbyRestaurantList extends StatefulWidget {
+  const _PagedNearbyRestaurantList({
+    required this.nearbyRestaurants,
+    required this.onRefresh,
+  });
+
+  final List<NearbyRestaurant> nearbyRestaurants;
+  final Future<void> Function() onRefresh;
+
+  @override
+  State<_PagedNearbyRestaurantList> createState() =>
+      _PagedNearbyRestaurantListState();
+}
+
+class _PagedNearbyRestaurantListState
+    extends State<_PagedNearbyRestaurantList> {
+  static const _pageSize = 12;
+  late String _resultKey;
+  int _visibleCount = _pageSize;
+
+  @override
+  void initState() {
+    super.initState();
+    _resultKey = _buildResultKey(widget.nearbyRestaurants);
+  }
+
+  @override
+  void didUpdateWidget(covariant _PagedNearbyRestaurantList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final nextResultKey = _buildResultKey(widget.nearbyRestaurants);
+    if (nextResultKey != _resultKey) {
+      _resultKey = nextResultKey;
+      _visibleCount = _pageSize;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasMore = _visibleCount < widget.nearbyRestaurants.length;
+    return Column(
+      children: [
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: widget.onRefresh,
+            child: _RestaurantList(
+              nearbyRestaurants: widget.nearbyRestaurants,
+              visibleCount: _visibleCount,
+            ),
+          ),
+        ),
+        if (hasMore)
+          LoadMoreRestaurantsButton(
+            onPressed: () {
+              setState(() => _visibleCount += _pageSize);
+            },
+          ),
+      ],
+    );
+  }
+
+  String _buildResultKey(List<NearbyRestaurant> restaurants) {
+    return restaurants.map((nearby) => nearby.restaurant.id).join(',');
   }
 }
 
@@ -329,10 +397,12 @@ class _RestaurantList extends StatelessWidget {
   const _RestaurantList({
     this.restaurants = const [],
     this.nearbyRestaurants = const [],
+    this.visibleCount,
   });
 
   final List<Restaurant> restaurants;
   final List<NearbyRestaurant> nearbyRestaurants;
+  final int? visibleCount;
 
   static const _adInsertionIndex = 3;
 
@@ -350,12 +420,15 @@ class _RestaurantList extends StatelessWidget {
                 ),
               )
               .toList(growable: false);
+    final visibleItems = visibleCount == null
+        ? items
+        : items.take(visibleCount!).toList(growable: false);
     return LayoutBuilder(
       builder: (context, constraints) {
         final useGrid = constraints.maxWidth >= 760;
         final padding = const EdgeInsets.fromLTRB(20, 0, 20, 28);
-        final includesAd = items.length > _adInsertionIndex;
-        final itemCount = items.length + (includesAd ? 1 : 0);
+        final includesAd = visibleItems.length > _adInsertionIndex;
+        final itemCount = visibleItems.length + (includesAd ? 1 : 0);
         if (useGrid) {
           return GridView.builder(
             padding: padding,
@@ -368,7 +441,7 @@ class _RestaurantList extends StatelessWidget {
             ),
             itemBuilder: (context, index) => _listItem(
               context,
-              items,
+              visibleItems,
               index,
               includesAd: includesAd,
               useGrid: true,
@@ -381,7 +454,7 @@ class _RestaurantList extends StatelessWidget {
           separatorBuilder: (context, index) => const SizedBox(height: 16),
           itemBuilder: (context, index) => _listItem(
             context,
-            items,
+            visibleItems,
             index,
             includesAd: includesAd,
             useGrid: false,

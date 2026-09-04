@@ -227,7 +227,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     page.isLoadingMore ||
                     page.loadMoreError != null)
                   LoadMoreRestaurantsButton(
-                    state: page,
+                    isLoading: page.isLoadingMore,
+                    errorMessage: page.loadMoreError,
                     onPressed: () => ref
                         .read(
                           paginatedSearchRestaurantsProvider(_query).notifier,
@@ -278,7 +279,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               Expanded(
                 child: result.restaurants.isEmpty
                     ? const Center(child: Text('附近找不到符合條件的店家。'))
-                    : _SearchResults(nearbyRestaurants: result.restaurants),
+                    : _PagedSearchResults(
+                        nearbyRestaurants: result.restaurants,
+                      ),
               ),
             ],
           ),
@@ -321,7 +324,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         if (!_favoriteNearbyEnabled) {
           return filtered.isEmpty
               ? const Center(child: Text('目前沒有符合條件的最愛店家'))
-              : _SearchResults(restaurants: filtered);
+              : _PagedSearchResults(restaurants: filtered);
         }
         return _buildNearbyFavoriteResults(filtered);
       },
@@ -368,7 +371,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   _SearchBanner(
                     message: '依距離排序，搜尋範圍 ${_nearbyRadiusKm.toInt()} 公里。',
                   ),
-                  Expanded(child: _SearchResults(nearbyRestaurants: nearby)),
+                  Expanded(
+                    child: _PagedSearchResults(nearbyRestaurants: nearby),
+                  ),
                 ],
               );
       },
@@ -597,6 +602,84 @@ class _SearchResults extends StatelessWidget {
         context,
       ).showSnackBar(const SnackBar(content: Text('無法開啟外部導航。')));
     }
+  }
+}
+
+/// 將已排序的結果分批顯示，避免一次建立過多店家卡片。
+class _PagedSearchResults extends StatefulWidget {
+  const _PagedSearchResults({
+    this.restaurants = const [],
+    this.nearbyRestaurants = const [],
+  });
+
+  final List<Restaurant> restaurants;
+  final List<NearbyRestaurant> nearbyRestaurants;
+
+  @override
+  State<_PagedSearchResults> createState() => _PagedSearchResultsState();
+}
+
+class _PagedSearchResultsState extends State<_PagedSearchResults> {
+  static const _pageSize = 12;
+  late String _resultKey;
+  int _visibleCount = _pageSize;
+
+  @override
+  void initState() {
+    super.initState();
+    _resultKey = _buildResultKey(widget);
+  }
+
+  @override
+  void didUpdateWidget(covariant _PagedSearchResults oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final nextResultKey = _buildResultKey(widget);
+    if (nextResultKey != _resultKey) {
+      _resultKey = nextResultKey;
+      _visibleCount = _pageSize;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final usingNearbyRestaurants = widget.nearbyRestaurants.isNotEmpty;
+    final totalCount = usingNearbyRestaurants
+        ? widget.nearbyRestaurants.length
+        : widget.restaurants.length;
+    final visibleCount = _visibleCount.clamp(0, totalCount);
+    final hasMore = visibleCount < totalCount;
+
+    return Column(
+      children: [
+        Expanded(
+          child: _SearchResults(
+            restaurants: usingNearbyRestaurants
+                ? const []
+                : widget.restaurants.take(visibleCount).toList(growable: false),
+            nearbyRestaurants: usingNearbyRestaurants
+                ? widget.nearbyRestaurants
+                      .take(visibleCount)
+                      .toList(growable: false)
+                : const [],
+          ),
+        ),
+        if (hasMore)
+          LoadMoreRestaurantsButton(
+            onPressed: () {
+              setState(() => _visibleCount += _pageSize);
+            },
+          ),
+      ],
+    );
+  }
+
+  String _buildResultKey(_PagedSearchResults widget) {
+    if (widget.nearbyRestaurants.isNotEmpty) {
+      return widget.nearbyRestaurants
+          .map((nearby) => nearby.restaurant.id)
+          .join(',');
+    }
+    return widget.restaurants.map((restaurant) => restaurant.id).join(',');
   }
 }
 
