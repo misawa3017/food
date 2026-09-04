@@ -25,6 +25,14 @@ class RestaurantRepository {
   Future<List<Restaurant>> searchRestaurants(
     RestaurantSearchQuery searchQuery,
   ) async {
+    return (await searchRestaurantPage(searchQuery)).restaurants;
+  }
+
+  /// 依搜尋條件取得一頁店家，並保留下一頁所需的 Firestore 游標。
+  Future<RestaurantSearchPage> searchRestaurantPage(
+    RestaurantSearchQuery searchQuery, {
+    RestaurantSearchPage? previousPage,
+  }) async {
     Query<Map<String, dynamic>> query = _firestore
         .collection('restaurants')
         .where('status', isEqualTo: 'active');
@@ -45,8 +53,22 @@ class RestaurantRepository {
       query = query.orderBy('createdAt', descending: true);
     }
 
-    final snapshot = await query.limit(searchQuery.limit).get();
-    return _restaurantsFromSnapshot(snapshot);
+    final lastDocument = previousPage?._lastDocument;
+    if (lastDocument != null) {
+      query = query.startAfterDocument(lastDocument);
+    }
+
+    final snapshot = await query.limit(searchQuery.limit + 1).get();
+    final visibleDocuments = snapshot.docs
+        .take(searchQuery.limit)
+        .toList(growable: false);
+    return RestaurantSearchPage._(
+      restaurants: visibleDocuments
+          .map((document) => Restaurant.fromMap(document.id, document.data()))
+          .toList(growable: false),
+      hasMore: snapshot.docs.length > searchQuery.limit,
+      lastDocument: visibleDocuments.isEmpty ? null : visibleDocuments.last,
+    );
   }
 
   /// 依收藏清單讀取目前仍公開的完整店家資料。
@@ -270,4 +292,16 @@ class RestaurantSearchQuery {
 
   @override
   int get hashCode => Object.hash(keyword, category, limit);
+}
+
+class RestaurantSearchPage {
+  const RestaurantSearchPage._({
+    required this.restaurants,
+    required this.hasMore,
+    required DocumentSnapshot<Map<String, dynamic>>? lastDocument,
+  }) : _lastDocument = lastDocument;
+
+  final List<Restaurant> restaurants;
+  final bool hasMore;
+  final DocumentSnapshot<Map<String, dynamic>>? _lastDocument;
 }

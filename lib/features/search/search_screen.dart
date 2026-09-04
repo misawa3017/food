@@ -13,6 +13,7 @@ import '../../data/models/restaurant.dart';
 import '../../data/providers/location_providers.dart';
 import '../../data/providers/restaurant_providers.dart';
 import '../../data/repositories/restaurant_repository.dart';
+import 'load_more_restaurants_button.dart';
 import '../restaurant/restaurant_card.dart';
 
 enum _SearchMode { keyword, nearby, favorite }
@@ -29,8 +30,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   static const _maximumNearbyRadiusKm = 50;
 
   final _searchController = TextEditingController();
-  // 搜尋導覽頁只顯示最新 10 筆，避免首次開啟時讀取過多店家資料。
-  RestaurantSearchQuery _query = const RestaurantSearchQuery(limit: 10);
+  // 搜尋導覽頁以 12 筆為一頁，符合桌面版三欄卡片排版。
+  RestaurantSearchQuery _query = const RestaurantSearchQuery(limit: 12);
   _SearchMode _mode = _SearchMode.keyword;
   double _nearbyRadiusKm = 10;
   bool _favoriteNearbyEnabled = false;
@@ -210,15 +211,31 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   }
 
   Widget _buildKeywordResults() {
-    final restaurants = ref.watch(searchRestaurantsProvider(_query));
+    final restaurants = ref.watch(paginatedSearchRestaurantsProvider(_query));
     return restaurants.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stackTrace) => _SearchError(
-        onRetry: () => ref.invalidate(searchRestaurantsProvider(_query)),
+        onRetry: () =>
+            ref.invalidate(paginatedSearchRestaurantsProvider(_query)),
       ),
-      data: (items) => items.isEmpty
+      data: (page) => page.restaurants.isEmpty
           ? const Center(child: Text('找不到符合條件的店家。'))
-          : _SearchResults(restaurants: items),
+          : Column(
+              children: [
+                Expanded(child: _SearchResults(restaurants: page.restaurants)),
+                if (page.hasMore ||
+                    page.isLoadingMore ||
+                    page.loadMoreError != null)
+                  LoadMoreRestaurantsButton(
+                    state: page,
+                    onPressed: () => ref
+                        .read(
+                          paginatedSearchRestaurantsProvider(_query).notifier,
+                        )
+                        .loadMore(),
+                  ),
+              ],
+            ),
     );
   }
 

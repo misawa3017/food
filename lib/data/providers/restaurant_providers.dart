@@ -39,6 +39,91 @@ final searchRestaurantsProvider =
           .searchRestaurants(query.normalized());
     });
 
+final paginatedSearchRestaurantsProvider = AsyncNotifierProvider.autoDispose
+    .family<
+      PaginatedRestaurantSearchNotifier,
+      PaginatedRestaurantSearchState,
+      RestaurantSearchQuery
+    >(PaginatedRestaurantSearchNotifier.new);
+
+class PaginatedRestaurantSearchNotifier
+    extends
+        AutoDisposeFamilyAsyncNotifier<
+          PaginatedRestaurantSearchState,
+          RestaurantSearchQuery
+        > {
+  late RestaurantSearchQuery _query;
+  RestaurantSearchPage? _lastPage;
+
+  @override
+  Future<PaginatedRestaurantSearchState> build(
+    RestaurantSearchQuery query,
+  ) async {
+    _query = query.normalized();
+    final page = await ref
+        .watch(restaurantRepositoryProvider)
+        .searchRestaurantPage(_query);
+    _lastPage = page;
+    return PaginatedRestaurantSearchState(
+      restaurants: page.restaurants,
+      hasMore: page.hasMore,
+    );
+  }
+
+  Future<void> loadMore() async {
+    final current = state.valueOrNull;
+    final previousPage = _lastPage;
+    if (current == null ||
+        previousPage == null ||
+        !current.hasMore ||
+        current.isLoadingMore) {
+      return;
+    }
+
+    state = AsyncData(
+      PaginatedRestaurantSearchState(
+        restaurants: current.restaurants,
+        hasMore: current.hasMore,
+        isLoadingMore: true,
+      ),
+    );
+    try {
+      final page = await ref
+          .read(restaurantRepositoryProvider)
+          .searchRestaurantPage(_query, previousPage: previousPage);
+      _lastPage = page;
+      state = AsyncData(
+        PaginatedRestaurantSearchState(
+          restaurants: [...current.restaurants, ...page.restaurants],
+          hasMore: page.hasMore,
+        ),
+      );
+    } catch (_) {
+      state = AsyncData(
+        PaginatedRestaurantSearchState(
+          restaurants: current.restaurants,
+          hasMore: current.hasMore,
+          loadMoreError: '載入更多店家失敗，請稍後再試。',
+        ),
+      );
+    }
+  }
+}
+
+class PaginatedRestaurantSearchState {
+  const PaginatedRestaurantSearchState({
+    required this.restaurants,
+    required this.hasMore,
+    this.isLoadingMore = false,
+    this.loadMoreError,
+  });
+
+  final List<Restaurant> restaurants;
+  final bool hasMore;
+  final bool isLoadingMore;
+  final String? loadMoreError;
+}
+
 final nearbyRestaurantsProvider =
     FutureProvider.family<NearbySearchResult, NearbyRestaurantQuery>((
       ref,
