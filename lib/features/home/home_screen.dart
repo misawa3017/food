@@ -261,7 +261,7 @@ class _PagedNearbyRestaurantList extends StatefulWidget {
 
 class _PagedNearbyRestaurantListState
     extends State<_PagedNearbyRestaurantList> {
-  static const _pageSize = 12;
+  static const _pageSize = 6;
   late String _resultKey;
   int _visibleCount = _pageSize;
 

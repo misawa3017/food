@@ -30,8 +30,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   static const _maximumNearbyRadiusKm = 50;
 
   final _searchController = TextEditingController();
-  // 搜尋導覽頁以 12 筆為一頁，符合桌面版三欄卡片排版。
-  RestaurantSearchQuery _query = const RestaurantSearchQuery(limit: 12);
+  // 手機首次載入以 6 筆為一頁，降低同時載入的封面圖片與卡片數量。
+  RestaurantSearchQuery _query = const RestaurantSearchQuery(limit: 6);
   _SearchMode _mode = _SearchMode.keyword;
   double _nearbyRadiusKm = 10;
   bool _favoriteNearbyEnabled = false;
@@ -620,7 +620,7 @@ class _PagedSearchResults extends StatefulWidget {
 }
 
 class _PagedSearchResultsState extends State<_PagedSearchResults> {
-  static const _pageSize = 12;
+  static const _pageSize = 6;
   late String _resultKey;
   int _visibleCount = _pageSize;
 
