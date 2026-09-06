@@ -64,182 +64,148 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isCompact = MediaQuery.sizeOf(context).width < 600;
-    final horizontalPadding = isCompact ? 12.0 : 16.0;
     return Scaffold(
-      // 底部導覽與搜尋框已能辨識目前頁面，手機版移除重複標題以優先顯示店家。
-      appBar: isCompact ? null : AppBar(title: const Text('搜尋')),
-      body: SafeArea(
-        top: isCompact,
-        child: Column(
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                horizontalPadding,
-                isCompact ? 8 : 16,
-                horizontalPadding,
-                isCompact ? 4 : 8,
-              ),
-              child: SegmentedButton<_SearchMode>(
-                segments: const [
-                  ButtonSegment(
-                    value: _SearchMode.keyword,
-                    icon: Icon(Icons.search),
-                    label: Text('關鍵字'),
-                  ),
-                  ButtonSegment(
-                    value: _SearchMode.nearby,
-                    icon: Icon(Icons.near_me_outlined),
-                    label: Text('附近'),
-                  ),
-                  ButtonSegment(
-                    value: _SearchMode.favorite,
-                    icon: Icon(Icons.favorite_border),
-                    label: Text('我的最愛'),
-                  ),
-                ],
-                selected: {_mode},
-                onSelectionChanged: (selection) {
-                  setState(() => _mode = selection.first);
-                },
-              ),
-            ),
-            if (_mode == _SearchMode.keyword)
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  horizontalPadding,
-                  isCompact ? 4 : 8,
-                  horizontalPadding,
-                  isCompact ? 4 : 8,
+      appBar: AppBar(title: const Text('搜尋')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: SegmentedButton<_SearchMode>(
+              segments: const [
+                ButtonSegment(
+                  value: _SearchMode.keyword,
+                  icon: Icon(Icons.search),
+                  label: Text('關鍵字'),
                 ),
-                child: TextField(
-                  controller: _searchController,
-                  textInputAction: TextInputAction.search,
-                  onSubmitted: (value) => _search(),
-                  decoration: InputDecoration(
-                    hintText: '輸入店家名稱',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: IconButton(
-                      tooltip: '搜尋',
-                      onPressed: _search,
-                      icon: const Icon(Icons.arrow_forward),
-                    ),
-                    border: const OutlineInputBorder(),
-                  ),
+                ButtonSegment(
+                  value: _SearchMode.nearby,
+                  icon: Icon(Icons.near_me_outlined),
+                  label: Text('附近'),
                 ),
-              ),
-            if (_mode == _SearchMode.nearby)
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  horizontalPadding,
-                  isCompact ? 4 : 8,
-                  horizontalPadding,
-                  0,
+                ButtonSegment(
+                  value: _SearchMode.favorite,
+                  icon: Icon(Icons.favorite_border),
+                  label: Text('我的最愛'),
                 ),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: OutlinedButton.icon(
-                    onPressed: _selectNearbyRadius,
-                    icon: const Icon(Icons.tune_outlined),
-                    label: Text('搜尋範圍：${_nearbyRadiusKm.toInt()} 公里'),
-                  ),
-                ),
-              ),
-            if (_mode == _SearchMode.favorite)
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  horizontalPadding,
-                  isCompact ? 4 : 8,
-                  horizontalPadding,
-                  0,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _searchController,
-                        textInputAction: TextInputAction.search,
-                        onSubmitted: (value) => _search(),
-                        decoration: InputDecoration(
-                          hintText: '搜尋我的最愛',
-                          prefixIcon: const Icon(Icons.search),
-                          suffixIcon: IconButton(
-                            tooltip: '搜尋',
-                            onPressed: _search,
-                            icon: const Icon(Icons.arrow_forward),
-                          ),
-                          border: const OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    OutlinedButton.icon(
-                      onPressed: () => setState(
-                        () => _favoriteNearbyEnabled = !_favoriteNearbyEnabled,
-                      ),
-                      icon: Icon(
-                        _favoriteNearbyEnabled
-                            ? Icons.near_me
-                            : Icons.near_me_outlined,
-                      ),
-                      label: Text(_favoriteNearbyEnabled ? '附近最愛' : '附近篩選'),
-                    ),
-                  ],
-                ),
-              ),
-            if (_mode == _SearchMode.favorite && _favoriteNearbyEnabled)
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  horizontalPadding,
-                  isCompact ? 4 : 8,
-                  horizontalPadding,
-                  0,
-                ),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: OutlinedButton.icon(
-                    onPressed: _selectNearbyRadius,
-                    icon: const Icon(Icons.tune_outlined),
-                    label: Text('篩選範圍：${_nearbyRadiusKm.toInt()} 公里'),
-                  ),
-                ),
-              ),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.symmetric(
-                horizontal: horizontalPadding,
-                vertical: isCompact ? 4 : 8,
-              ),
-              child: Row(
-                children: [
-                  ChoiceChip(
-                    label: const Text('全部'),
-                    selected: _query.category == null,
-                    onSelected: (selected) => _selectCategory(null),
-                  ),
-                  const SizedBox(width: 8),
-                  for (final category in FoodCategories.all) ...[
-                    ChoiceChip(
-                      label: Text(category),
-                      selected: _query.category == category,
-                      onSelected: (selected) {
-                        _selectCategory(selected ? category : null);
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                ],
-              ),
-            ),
-            Expanded(
-              child: switch (_mode) {
-                _SearchMode.keyword => _buildKeywordResults(),
-                _SearchMode.nearby => _buildNearbyResults(),
-                _SearchMode.favorite => _buildFavoriteResults(),
+              ],
+              selected: {_mode},
+              onSelectionChanged: (selection) {
+                setState(() => _mode = selection.first);
               },
             ),
-          ],
-        ),
+          ),
+          if (_mode == _SearchMode.keyword)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: TextField(
+                controller: _searchController,
+                textInputAction: TextInputAction.search,
+                onSubmitted: (value) => _search(),
+                decoration: InputDecoration(
+                  hintText: '輸入店家名稱',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: IconButton(
+                    tooltip: '搜尋',
+                    onPressed: _search,
+                    icon: const Icon(Icons.arrow_forward),
+                  ),
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+            ),
+          if (_mode == _SearchMode.nearby)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: _selectNearbyRadius,
+                  icon: const Icon(Icons.tune_outlined),
+                  label: Text('搜尋範圍：${_nearbyRadiusKm.toInt()} 公里'),
+                ),
+              ),
+            ),
+          if (_mode == _SearchMode.favorite)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: (value) => _search(),
+                      decoration: InputDecoration(
+                        hintText: '搜尋我的最愛',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: IconButton(
+                          tooltip: '搜尋',
+                          onPressed: _search,
+                          icon: const Icon(Icons.arrow_forward),
+                        ),
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    onPressed: () => setState(
+                      () => _favoriteNearbyEnabled = !_favoriteNearbyEnabled,
+                    ),
+                    icon: Icon(
+                      _favoriteNearbyEnabled
+                          ? Icons.near_me
+                          : Icons.near_me_outlined,
+                    ),
+                    label: Text(_favoriteNearbyEnabled ? '附近最愛' : '附近篩選'),
+                  ),
+                ],
+              ),
+            ),
+          if (_mode == _SearchMode.favorite && _favoriteNearbyEnabled)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: _selectNearbyRadius,
+                  icon: const Icon(Icons.tune_outlined),
+                  label: Text('篩選範圍：${_nearbyRadiusKm.toInt()} 公里'),
+                ),
+              ),
+            ),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                ChoiceChip(
+                  label: const Text('全部'),
+                  selected: _query.category == null,
+                  onSelected: (selected) => _selectCategory(null),
+                ),
+                const SizedBox(width: 8),
+                for (final category in FoodCategories.all) ...[
+                  ChoiceChip(
+                    label: Text(category),
+                    selected: _query.category == category,
+                    onSelected: (selected) {
+                      _selectCategory(selected ? category : null);
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                ],
+              ],
+            ),
+          ),
+          Expanded(
+            child: switch (_mode) {
+              _SearchMode.keyword => _buildKeywordResults(),
+              _SearchMode.nearby => _buildNearbyResults(),
+              _SearchMode.favorite => _buildFavoriteResults(),
+            },
+          ),
+        ],
       ),
     );
   }
