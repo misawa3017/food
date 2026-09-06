@@ -25,7 +25,8 @@ class LoadMoreRestaurantsButton extends StatelessWidget {
       );
     }
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+      // 將按鈕置於店家卡片與底部導覽間的可用空間中央。
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
