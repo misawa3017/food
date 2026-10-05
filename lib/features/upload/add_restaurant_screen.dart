@@ -226,6 +226,8 @@ class _AddRestaurantScreenState extends ConsumerState<AddRestaurantScreen> {
     );
     if (!mounted || action == null) return;
     if (action == 'home') {
+      // 新增頁在底部導覽中會被保留，離開前清空以免下一次誤用上一筆資料。
+      _resetFormForNextRestaurant(showMessage: false);
       context.go('/');
       return;
     }
@@ -242,7 +244,7 @@ class _AddRestaurantScreenState extends ConsumerState<AddRestaurantScreen> {
     );
   }
 
-  void _resetFormForNextRestaurant() {
+  void _resetFormForNextRestaurant({bool showMessage = true}) {
     _formKey.currentState?.reset();
     _nameController.clear();
     _streetController.clear();
@@ -256,7 +258,9 @@ class _AddRestaurantScreenState extends ConsumerState<AddRestaurantScreen> {
       _location = null;
       _progress = 0;
     });
-    _showMessage('已清空表單，可以新增下一個店家。');
+    if (showMessage) {
+      _showMessage('已清空表單，可以新增下一個店家。');
+    }
   }
 
   Future<void> _handleContributionError(ContributionException error) async {
