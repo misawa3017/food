@@ -26,7 +26,7 @@ class AddRestaurantScreen extends ConsumerStatefulWidget {
 }
 
 class _AddRestaurantScreenState extends ConsumerState<AddRestaurantScreen> {
-  final _formKey = GlobalKey<FormState>();
+  var _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _streetController = TextEditingController();
   final _dishesController = TextEditingController();
@@ -189,6 +189,8 @@ class _AddRestaurantScreenState extends ConsumerState<AddRestaurantScreen> {
     RestaurantSubmissionResult submission,
   ) async {
     if (!mounted) return;
+    // 店家已建立，所有後續去向都必須結束這筆草稿，包含修改與照片失敗分支。
+    _resetFormForNextRestaurant();
     if (submission.photoUploadFailed) {
       context.go(
         Uri(
@@ -226,13 +228,11 @@ class _AddRestaurantScreenState extends ConsumerState<AddRestaurantScreen> {
     );
     if (!mounted || action == null) return;
     if (action == 'home') {
-      // 新增頁在底部導覽中會被保留，離開前清空以免下一次誤用上一筆資料。
-      _resetFormForNextRestaurant(showMessage: false);
       context.go('/');
       return;
     }
     if (action == 'continue') {
-      _resetFormForNextRestaurant();
+      _showMessage('已清空表單，可以新增下一個店家。');
       return;
     }
 
@@ -244,12 +244,13 @@ class _AddRestaurantScreenState extends ConsumerState<AddRestaurantScreen> {
     );
   }
 
-  void _resetFormForNextRestaurant({bool showMessage = true}) {
-    _formKey.currentState?.reset();
+  void _resetFormForNextRestaurant() {
     _nameController.clear();
     _streetController.clear();
     _dishesController.clear();
     setState(() {
+      // 重建 Form，避免下拉欄位 reset 時重新帶入上一筆 initialValue。
+      _formKey = GlobalKey<FormState>();
       _categories.clear();
       _amenities.clear();
       _city = null;
@@ -258,9 +259,6 @@ class _AddRestaurantScreenState extends ConsumerState<AddRestaurantScreen> {
       _location = null;
       _progress = 0;
     });
-    if (showMessage) {
-      _showMessage('已清空表單，可以新增下一個店家。');
-    }
   }
 
   Future<void> _handleContributionError(ContributionException error) async {
