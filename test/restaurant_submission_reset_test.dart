@@ -36,7 +36,7 @@ class _SubmissionRepository implements ContributionRepository {
 }
 
 void main() {
-  for (final action in ['回首頁', '修改店家', 'photoUploadFailed']) {
+  for (final action in ['回首頁', 'photoUploadFailed']) {
     testWidgets('Publication via $action opens an empty upload form', (
       tester,
     ) async {
@@ -98,8 +98,12 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
       if (action != 'photoUploadFailed') {
-        expect(find.text('店家新增完成'), findsOneWidget);
-        await tester.tap(find.text(action));
+        expect(find.byType(AlertDialog), findsNothing);
+        expect(find.text('店家已新增。'), findsNothing);
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(FoodApp)),
+        );
+        expect(container.read(appRouterProvider).state.uri.path, '/');
       }
       await tester.pumpAndSettle();
       if (action != '回首頁') {

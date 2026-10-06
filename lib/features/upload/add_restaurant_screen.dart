@@ -10,7 +10,6 @@ import '../../core/constants/taiwan_administrative_areas.dart';
 import '../../data/models/contribution_models.dart';
 import '../../data/models/imported_place.dart';
 import '../../data/models/restaurant.dart';
-import '../../data/providers/ad_providers.dart';
 import '../../data/providers/contribution_providers.dart';
 import '../../data/providers/location_providers.dart';
 import '../../data/repositories/contribution_repository.dart';
@@ -201,47 +200,7 @@ class _AddRestaurantScreenState extends ConsumerState<AddRestaurantScreen> {
       return;
     }
 
-    _showMessage('店家已新增。');
-    await ref.read(adServiceProvider).showInterstitial();
-    if (!mounted) return;
-    final action = await showDialog<String>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('店家新增完成'),
-        content: const Text('店家已成功新增。接下來要做什麼？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop('home'),
-            child: const Text('回首頁'),
-          ),
-          OutlinedButton(
-            onPressed: () => Navigator.of(dialogContext).pop('continue'),
-            child: const Text('繼續新增下一個店家'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop('edit'),
-            child: const Text('修改店家'),
-          ),
-        ],
-      ),
-    );
-    if (!mounted || action == null) return;
-    if (action == 'home') {
-      context.go('/');
-      return;
-    }
-    if (action == 'continue') {
-      _showMessage('已清空表單，可以新增下一個店家。');
-      return;
-    }
-
-    context.go(
-      Uri(
-        path: '/restaurants/${submission.restaurantId}',
-        queryParameters: const {'edit': '1'},
-      ).toString(),
-    );
+    context.go('/');
   }
 
   void _resetFormForNextRestaurant() {
