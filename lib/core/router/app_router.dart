@@ -13,14 +13,16 @@ import '../../features/restaurant/restaurant_detail_screen.dart';
 import '../../features/search/search_screen.dart';
 import '../../features/upload/add_restaurant_screen.dart';
 import '../widgets/app_shell.dart';
+import '../widgets/sign_in_required_tab.dart';
 
 const _loginPath = '/login';
 
-/// 判斷路徑是否需要登入才能進入
+/// 判斷路徑是否需要登入才能進入（未登入會被導向登入頁）
+///
+/// 「新增」分頁 `/upload` 不在此列：未登入時由 [SignInRequiredTab]
+/// 在分頁內顯示登入提示，才能保留底部導覽列。
 bool routeRequiresSignIn(String path) {
-  return path == '/upload' ||
-      path == '/admin' ||
-      path == '/import-google-saved-places';
+  return path == '/admin' || path == '/import-google-saved-places';
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -104,10 +106,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/upload',
-                builder: (context, state) => AddRestaurantScreen(
-                  importedPlace: state.extra is ImportedPlace
-                      ? state.extra! as ImportedPlace
-                      : null,
+                builder: (context, state) => SignInRequiredTab(
+                  path: '/upload',
+                  title: '分享一家好店',
+                  message: '登入後即可推薦餐廳、上傳照片。',
+                  child: AddRestaurantScreen(
+                    importedPlace: state.extra is ImportedPlace
+                        ? state.extra! as ImportedPlace
+                        : null,
+                  ),
                 ),
               ),
             ],

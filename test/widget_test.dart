@@ -78,7 +78,7 @@ void main() {
     expect(find.text('測試食堂'), findsOneWidget);
   });
 
-  testWidgets('Upload redirects signed-out users to login', (
+  testWidgets('Signed-out upload tab keeps the nav bar and can go back', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -101,9 +101,28 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.tap(find.text('搜尋'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('新增'));
     await tester.pumpAndSettle();
 
+    // 未登入時留在分頁內顯示提示，底部導覽列仍在
+    expect(find.text('尚未登入'), findsOneWidget);
+    expect(find.byType(NavigationBar), findsOneWidget);
+
+    // 返回鍵回到切換前的「搜尋」分頁
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+      1,
+    );
+
+    // 「前往登入」開啟登入頁
+    await tester.tap(find.text('新增'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('前往登入'));
+    await tester.pumpAndSettle();
     expect(find.text('登入後繼續'), findsOneWidget);
     expect(find.text('使用 Google 登入'), findsOneWidget);
   });
