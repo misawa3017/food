@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/widgets/app_shell.dart';
 import '../../data/models/auth_user.dart';
 import '../../data/models/favorite_restaurant.dart';
 import '../../data/models/imported_place.dart';
@@ -35,8 +36,18 @@ class MyPageScreen extends ConsumerWidget {
       }
     }
 
+    final isSignedOut = authState.hasValue && authState.requireValue == null;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('我的')),
+      appBar: AppBar(
+        // 未登入時提供返回鍵，回到切換到「我的」之前的分頁
+        leading: isSignedOut
+            ? BackButton(
+                onPressed: () => goToPreviousTab(context, ref, from: '/me'),
+              )
+            : null,
+        title: const Text('我的'),
+      ),
       body: authState.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) =>
