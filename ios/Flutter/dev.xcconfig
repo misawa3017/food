@@ -1,0 +1,9 @@
+// dev 環境（food-9a095）的 iOS 原生設定。
+// Firebase 由 Dart 的 FirebaseOptions 初始化，這裡只提供 Google 登入需要的 client ID，
+// 讓 Info.plist 的 GIDClientID 與 URL scheme 依 flavor 注入，避免 prod 誤用 dev 的 client。
+GOOGLE_CLIENT_ID = 267091699106-ftin674etv75t38ft2ohf97rssrbvekr.apps.googleusercontent.com
+GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.267091699106-ftin674etv75t38ft2ohf97rssrbvekr
+
+// Runner 匯入 google_mobile_ads module 時，會連帶編譯它引用的 GoogleMobileAds 非 modular private header；
+// 與 Podfile 中對 google_mobile_ads target 的設定相同，Runner 端也需要放寬。
+CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES

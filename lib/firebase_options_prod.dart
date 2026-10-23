@@ -1,7 +1,6 @@
 // Firebase settings for the production project.
 //
 // This file contains Firebase client identifiers, not server credentials.
-// Generate it again with FlutterFire CLI when a production iOS app is added.
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
@@ -16,9 +15,7 @@ class ProductionFirebaseOptions {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        throw UnsupportedError(
-          'Production Firebase has not been configured for iOS yet.',
-        );
+        return ios;
       case TargetPlatform.macOS:
       case TargetPlatform.windows:
       case TargetPlatform.linux:
@@ -47,5 +44,16 @@ class ProductionFirebaseOptions {
     messagingSenderId: '251427655696',
     projectId: 'food-prod-9a095',
     storageBucket: 'food-prod-9a095.firebasestorage.app',
+  );
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyC4dOV9utfBzhaac0DxfSQoz1femurgZHU',
+    appId: '1:251427655696:ios:0fe11d5e990904e147fa95',
+    messagingSenderId: '251427655696',
+    projectId: 'food-prod-9a095',
+    storageBucket: 'food-prod-9a095.firebasestorage.app',
+    iosClientId:
+        '251427655696-dpsor34oq1bglq41eirmpuiu780o2fgq.apps.googleusercontent.com',
+    iosBundleId: 'com.misawa.food.foodApp',
   );
 }

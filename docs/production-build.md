@@ -14,6 +14,11 @@ flutter run --flavor dev --dart-define=FIREBASE_ENV=dev
 To use the local Firebase Emulator Suite, also include
 `--dart-define=USE_FIREBASE_EMULATORS=true`.
 
+## iOS
+
+iOS builds require macOS. See [iOS development](ios-development.md) for the
+flavor setup and local commands.
+
 ## Production Android build
 
 ```powershell
