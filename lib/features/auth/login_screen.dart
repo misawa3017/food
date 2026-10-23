@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import '../../core/router/app_router.dart';
 import '../../data/providers/auth_providers.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -70,6 +71,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return _genericSignInError;
   }
 
+  /// 返回上一頁；若導航堆疊無法 pop（例如被 redirect 或 go 導入），
+  /// 則回到來源頁，來源頁需要登入時改回首頁，避免又被導回登入頁。
+  void _goBack() {
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+
+    final from = widget.redirectLocation;
+    final fallback = from != null && !routeRequiresSignIn(Uri.parse(from).path)
+        ? from
+        : '/';
+    context.go(fallback);
+  }
+
   void _showError(String message) {
     ScaffoldMessenger.of(
       context,
@@ -81,61 +97,72 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final showAppleSignIn =
         !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('登入')),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Icon(Icons.restaurant, size: 72),
-                  const SizedBox(height: 24),
-                  Text(
-                    '登入後繼續',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '登入後即可推薦餐廳、上傳照片、收藏與管理自己的投稿。',
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 32),
-                  FilledButton.icon(
-                    onPressed: _isLoading
-                        ? null
-                        : () => _signIn(
-                            () => ref
-                                .read(authRepositoryProvider)
-                                .signInWithGoogle(),
-                          ),
-                    icon: const Icon(Icons.login),
-                    label: const Text('使用 Google 登入'),
-                  ),
-                  if (showAppleSignIn) ...[
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          _goBack();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: BackButton(onPressed: _goBack),
+          title: const Text('登入'),
+        ),
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Icon(Icons.restaurant, size: 72),
+                    const SizedBox(height: 24),
+                    Text(
+                      '登入後繼續',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      '登入後即可推薦餐廳、上傳照片、收藏與管理自己的投稿。',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 32),
+                    FilledButton.icon(
                       onPressed: _isLoading
                           ? null
                           : () => _signIn(
                               () => ref
                                   .read(authRepositoryProvider)
-                                  .signInWithApple(),
+                                  .signInWithGoogle(),
                             ),
-                      icon: const Icon(Icons.apple),
-                      label: const Text('使用 Apple 登入'),
+                      icon: const Icon(Icons.login),
+                      label: const Text('使用 Google 登入'),
                     ),
+                    if (showAppleSignIn) ...[
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: _isLoading
+                            ? null
+                            : () => _signIn(
+                                () => ref
+                                    .read(authRepositoryProvider)
+                                    .signInWithApple(),
+                              ),
+                        icon: const Icon(Icons.apple),
+                        label: const Text('使用 Apple 登入'),
+                      ),
+                    ],
+                    if (_isLoading) ...[
+                      const SizedBox(height: 20),
+                      const Center(child: CircularProgressIndicator()),
+                    ],
                   ],
-                  if (_isLoading) ...[
-                    const SizedBox(height: 20),
-                    const Center(child: CircularProgressIndicator()),
-                  ],
-                ],
+                ),
               ),
             ),
           ),

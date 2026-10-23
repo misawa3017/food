@@ -16,6 +16,13 @@ import '../widgets/app_shell.dart';
 
 const _loginPath = '/login';
 
+/// 判斷路徑是否需要登入才能進入
+bool routeRequiresSignIn(String path) {
+  return path == '/upload' ||
+      path == '/admin' ||
+      path == '/import-google-saved-places';
+}
+
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateChangesProvider);
 
@@ -28,10 +35,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       final isSignedIn = authState.asData?.value != null;
       final isLoginRoute = state.uri.path == _loginPath;
-      final requiresSignIn =
-          state.uri.path == '/upload' ||
-          state.uri.path == '/admin' ||
-          state.uri.path == '/import-google-saved-places';
+      final requiresSignIn = routeRequiresSignIn(state.uri.path);
 
       if (!isSignedIn && requiresSignIn) {
         return Uri(
