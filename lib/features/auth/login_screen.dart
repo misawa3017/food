@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../core/router/app_router.dart';
+import '../../core/widgets/app_shell.dart';
 import '../../data/providers/auth_providers.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -72,17 +73,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   /// 返回上一頁；若導航堆疊無法 pop（例如被 redirect 或 go 導入），
-  /// 則回到來源頁，來源頁需要登入時改回首頁，避免又被導回登入頁。
+  /// 依序回到來源頁、切換前的分頁，都需要登入時改回首頁，避免又被導回登入頁。
   void _goBack() {
     if (context.canPop()) {
       context.pop();
       return;
     }
 
-    final from = widget.redirectLocation;
-    final fallback = from != null && !routeRequiresSignIn(Uri.parse(from).path)
-        ? from
-        : '/';
+    final candidates = [
+      widget.redirectLocation,
+      ref.read(previousTabPathProvider),
+    ];
+    final fallback = candidates.firstWhere(
+      (location) =>
+          location != null && !routeRequiresSignIn(Uri.parse(location).path),
+      orElse: () => '/',
+    )!;
     context.go(fallback);
   }
 
