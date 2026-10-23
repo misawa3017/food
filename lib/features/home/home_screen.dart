@@ -39,10 +39,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         data: (result) {
           final coordinates = result.coordinates;
           if (coordinates == null) {
+            final actionLabel = _locationActionLabel(result.failure);
             return _FallbackFeed(
               message: _locationFailureMessage(result.failure),
-              actionLabel: _locationActionLabel(result.failure),
-              onAction: () => _handleLocationAction(ref, result.failure),
+              actionLabel: actionLabel,
+              // 沒有對應的設定頁時不傳 onAction，讓「重新嘗試」退回 onRetry 重新取得位置
+              onAction: actionLabel == null
+                  ? null
+                  : () => _handleLocationAction(ref, result.failure),
               onRetry: () => ref.invalidate(currentLocationProvider),
             );
           }

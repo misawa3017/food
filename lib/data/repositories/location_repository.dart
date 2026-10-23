@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../models/location_result.dart';
@@ -36,7 +37,11 @@ class LocationRepository {
           longitude: position.longitude,
         ),
       );
-    } catch (_) {
+    } catch (error) {
+      // 逾時與平台例外都歸類為 unavailable，debug 時印出原因以便排查
+      if (kDebugMode) {
+        debugPrint('取得目前位置失敗：$error');
+      }
       return const LocationResult.failed(LocationFailure.unavailable);
     }
   }

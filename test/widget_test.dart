@@ -450,6 +450,37 @@ void main() {
     expect(find.text('測試食堂'), findsOneWidget);
   });
 
+  testWidgets('Home retry requests location again when it is unavailable', (
+    WidgetTester tester,
+  ) async {
+    var locationRequests = 0;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authStateChangesProvider.overrideWith((ref) => Stream.value(null)),
+          currentLocationProvider.overrideWith((ref) async {
+            locationRequests++;
+            return const LocationResult.failed(LocationFailure.unavailable);
+          }),
+          latestRestaurantsProvider.overrideWith(
+            (ref) => Stream.value(const [_restaurant]),
+          ),
+          searchCatalogProvider.overrideWith(
+            (ref) => Stream.value(const [_restaurant]),
+          ),
+        ],
+        child: const FoodApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(locationRequests, 1);
+
+    await tester.tap(find.text('重新嘗試'));
+    await tester.pumpAndSettle();
+
+    expect(locationRequests, 2);
+  });
+
   test('Restaurant model tolerates missing and invalid optional fields', () {
     final restaurant = Restaurant.fromMap('safe-model', {
       'name': '安全店家',
