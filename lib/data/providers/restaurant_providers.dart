@@ -46,19 +46,17 @@ final paginatedSearchRestaurantsProvider = AsyncNotifierProvider.autoDispose
       RestaurantSearchQuery
     >(PaginatedRestaurantSearchNotifier.new);
 
+/// Riverpod 3 的 family notifier 由建構子接收參數，不再透過 `build` 傳入。
 class PaginatedRestaurantSearchNotifier
-    extends
-        AutoDisposeFamilyAsyncNotifier<
-          PaginatedRestaurantSearchState,
-          RestaurantSearchQuery
-        > {
+    extends AsyncNotifier<PaginatedRestaurantSearchState> {
+  PaginatedRestaurantSearchNotifier(this.query);
+
+  final RestaurantSearchQuery query;
   late RestaurantSearchQuery _query;
   RestaurantSearchPage? _lastPage;
 
   @override
-  Future<PaginatedRestaurantSearchState> build(
-    RestaurantSearchQuery query,
-  ) async {
+  Future<PaginatedRestaurantSearchState> build() async {
     _query = query.normalized();
     final page = await ref
         .watch(restaurantRepositoryProvider)
@@ -71,7 +69,7 @@ class PaginatedRestaurantSearchNotifier
   }
 
   Future<void> loadMore() async {
-    final current = state.valueOrNull;
+    final current = state.value;
     final previousPage = _lastPage;
     if (current == null ||
         previousPage == null ||

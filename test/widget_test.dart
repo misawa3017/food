@@ -11,7 +11,6 @@ import 'package:food_app/data/providers/auth_providers.dart';
 import 'package:food_app/data/providers/location_providers.dart';
 import 'package:food_app/data/providers/moderation_providers.dart';
 import 'package:food_app/data/providers/restaurant_providers.dart';
-import 'package:food_app/data/repositories/restaurant_repository.dart';
 import 'package:food_app/features/account/account_deletion_info_screen.dart';
 import 'package:food_app/features/admin/admin_screen.dart';
 import 'package:food_app/features/restaurant/restaurant_detail_screen.dart';
@@ -36,10 +35,10 @@ const _restaurant = Restaurant(
 
 class _FakePaginatedRestaurantSearchNotifier
     extends PaginatedRestaurantSearchNotifier {
+  _FakePaginatedRestaurantSearchNotifier(super.query);
+
   @override
-  Future<PaginatedRestaurantSearchState> build(
-    RestaurantSearchQuery query,
-  ) async {
+  Future<PaginatedRestaurantSearchState> build() async {
     return const PaginatedRestaurantSearchState(
       restaurants: [_restaurant],
       hasMore: false,
@@ -288,7 +287,7 @@ void main() {
           searchRestaurantsProvider.overrideWith(
             (ref, query) async => const [_restaurant],
           ),
-          paginatedSearchRestaurantsProvider.overrideWith(
+          paginatedSearchRestaurantsProvider.overrideWith2(
             _FakePaginatedRestaurantSearchNotifier.new,
           ),
         ],
