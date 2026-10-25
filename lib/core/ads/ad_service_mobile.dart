@@ -16,7 +16,7 @@ class MobileAdService implements AdService {
   bool _interstitialLoading = false;
 
   @override
-  bool get isSupported => Platform.isAndroid;
+  bool get isSupported => Platform.isAndroid || Platform.isIOS;
 
   @override
   Future<bool> initialize() {
@@ -82,7 +82,7 @@ class MobileAdService implements AdService {
     }
     _interstitialLoading = true;
     InterstitialAd.load(
-      adUnitId: AdUnits.androidInterstitialTest,
+      adUnitId: AdUnits.interstitial,
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {

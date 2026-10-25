@@ -38,7 +38,7 @@ App 內**不放** `GoogleService-Info.plist`。Firebase 由 Dart 的 `FirebaseOp
 
 `google_mobile_ads` 9.1.0 的 header 引用了 GoogleMobileAds 的非 modular private header，因此 `ios/Podfile` 的 `post_install` 與 dev/prod xcconfig 都設定了 `CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES`。外掛修正後可以移除。
 
-iOS 第一版不顯示廣告（`Platform.isAndroid` 判斷）。`Info.plist` 的 `GADApplicationIdentifier` 是 Google 官方測試 ID，只是為了避免 SDK 在啟動時因缺少此值而 crash；之後 iOS 要放廣告時，必須換成正式 App ID，並加入 ATT 與 SKAdNetwork 設定。
+iOS 與 Android 共用 `AdService` 與底部自適應橫幅（「新增」分頁不顯示）；廣告單元 ID 在 `lib/core/ads/ad_units.dart`，目前全部是 Google 官方測試 ID。`Info.plist` 的 `GADApplicationIdentifier` 也是測試 ID。上架前必須在 AdMob 建立 iOS App，換成正式 App ID 與廣告單元（只在 release 版使用），並補上 SKAdNetwork 清單、app-ads.txt 與 App Store 隱私標籤。`NSUserTrackingUsageDescription` 已加入，供 AdMob UMP 的 IDFA 說明訊息觸發 ATT 視窗。
 
 ## 本機開發
 

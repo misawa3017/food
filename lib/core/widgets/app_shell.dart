@@ -37,7 +37,9 @@ class AppShell extends ConsumerWidget {
       body: Column(
         children: [
           Expanded(child: navigationShell),
-          const AppBannerAd(),
+          // 填寫投稿表單時容易誤點廣告，「新增」分頁不顯示橫幅
+          if (appShellTabPaths[navigationShell.currentIndex] != '/upload')
+            const AppBannerAd(),
         ],
       ),
       bottomNavigationBar: SafeArea(

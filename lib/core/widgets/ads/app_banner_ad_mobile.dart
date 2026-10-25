@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -12,7 +10,9 @@ class AppBannerAd extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (!Platform.isAndroid) return const SizedBox.shrink();
+    if (!ref.watch(adServiceProvider).isSupported) {
+      return const SizedBox.shrink();
+    }
     final initialization = ref.watch(adInitializationProvider);
     return initialization.maybeWhen(
       data: (canRequestAds) =>
@@ -31,13 +31,25 @@ class _LoadedBannerAd extends StatefulWidget {
 
 class _LoadedBannerAdState extends State<_LoadedBannerAd> {
   BannerAd? _bannerAd;
+  bool _loadStarted = false;
 
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 自適應橫幅需要螢幕寬度，MediaQuery 在 initState 時還不能讀取
+    if (_loadStarted) return;
+    _loadStarted = true;
+    _load(MediaQuery.sizeOf(context).width.truncate());
+  }
+
+  Future<void> _load(int width) async {
+    final size =
+        await AdSize.getLargeAnchoredAdaptiveBannerAdSize(width) ??
+        AdSize.banner;
+    if (!mounted) return;
     final ad = BannerAd(
-      size: AdSize.banner,
-      adUnitId: AdUnits.androidBannerTest,
+      size: size,
+      adUnitId: AdUnits.banner,
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (loadedAd) {

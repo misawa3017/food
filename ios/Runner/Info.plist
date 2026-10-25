@@ -45,6 +45,8 @@
 	<string>管吃會使用你的位置，依距離排序附近的店家，並在你更新店家位置時記錄目前座標。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>管吃需要讀取相簿，讓你為店家選擇並上傳照片。</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>允許後，管吃可以顯示更符合你興趣的廣告；不允許也能正常使用所有功能。</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
