@@ -10,6 +10,15 @@ class AppCheckService {
     'FIREBASE_APP_CHECK_RECAPTCHA_ENTERPRISE_SITE_KEY',
   );
 
+  /// 個人測試用的固定 iOS debug token。
+  ///
+  /// 尚無付費 Apple Developer 帳號時無法使用 App Attest，帶入此值後 release 版也改用
+  /// debug provider，才能裝在自己手機上從主畫面啟動並通過 App Check。
+  /// 上架的版本絕對不能帶此參數，否則 token 會被包進 App。
+  static const _appleDebugToken = String.fromEnvironment(
+    'FIREBASE_APP_CHECK_APPLE_DEBUG_TOKEN',
+  );
+
   Future<void> activate() async {
     if (FirebaseEmulatorService.enabled) {
       if (kDebugMode) {
@@ -32,7 +41,9 @@ class AppCheckService {
       providerAndroid: kDebugMode
           ? const AndroidDebugProvider()
           : const AndroidPlayIntegrityProvider(),
-      providerApple: kDebugMode
+      providerApple: _appleDebugToken.isNotEmpty
+          ? const AppleDebugProvider(debugToken: _appleDebugToken)
+          : kDebugMode
           ? const AppleDebugProvider()
           : const AppleAppAttestWithDeviceCheckFallbackProvider(),
     );

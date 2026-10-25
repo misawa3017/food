@@ -66,6 +66,32 @@ debug build 使用 `AppleDebugProvider`。第一次執行時，從 `flutter run`
 
 模擬器不支援 App Attest，因此在模擬器上連 prod 時，必須把 debug token 登記到 prod。這個 token 可以繞過 App Check，要妥善保管；改用實機測試後，就從 prod 刪除。在模擬器上連 prod 新增的店家、照片與評論都是正式資料，測完要清除。
 
+## 安裝到自己的 iPhone（免費 Apple ID）
+
+尚未加入付費 Apple Developer Program 時，可以用免費 Apple ID 的 Personal Team 安裝到自己的 iPhone；App 在 7 天後失效，需要重新安裝。
+
+- Xcode 的 Signing & Capabilities 只設定 Team，不要套用「Update to recommended settings」，它會把最低版本改掉，導致 Pods 建置失敗。
+- 建置一律用終端機的 `flutter run`，不要在 Xcode 按 ▶（Xcode 不會先準備實機用的 Flutter 引擎）。
+- debug 版在 iOS 14+ 不能從主畫面啟動，因此個人測試用 release 版。
+
+免費帳號不能使用 App Attest，而 Cloud Functions 強制要求 App Check。為了在 release 版通過 App Check，可以帶入固定的 debug token：
+
+1. 在專案根目錄建立 `app_check_debug.local.json`（已列入 `.gitignore`，不可提交）：
+   ```json
+   {
+     "FIREBASE_APP_CHECK_APPLE_DEBUG_TOKEN": "<已登記在 Firebase App Check 的 iOS debug token>"
+   }
+   ```
+2. 建置 release 版並安裝到接上傳輸線的 iPhone：
+   ```bash
+   flutter build ios --release --flavor prod --dart-define=FIREBASE_ENV=prod \
+     --dart-define-from-file=app_check_debug.local.json
+   xcrun devicectl device install app --device <iPhone 名稱> build/ios/iphoneos/Runner.app
+   ```
+   不要用 `flutter run --release --flavor prod`：使用 flavor 時它會到 `build/ios/iphoneos/` 找 App，但實際產物在 `build/ios/Release-prod-iphoneos/`，因此安裝失敗。
+
+**上架（TestFlight / App Store）的版本絕對不能帶 `--dart-define-from-file=app_check_debug.local.json`**，否則 token 會被包進 App。付費帳號開通並改用 App Attest 後，就不再需要這個檔案。
+
 ## 待 Apple Developer 帳號開通後
 
 - 在 Xcode 的 Signing & Capabilities 設定 Team，加入 Sign in with Apple 與 App Attest

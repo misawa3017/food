@@ -224,3 +224,6 @@ temp/
 # 建議將 AGENTS.md commit 到 Git，
 
 # 讓所有開發者與 Codex 都使用相同的專案規範。
+
+# 個人測試用 App Check debug token（機密，不可提交）
+app_check_debug.local.json
