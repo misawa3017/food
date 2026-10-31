@@ -480,6 +480,130 @@ void main() {
     expect(find.text('目前沒有待處理項目。'), findsOneWidget);
   });
 
+  testWidgets('Home has no title bar and stays below the status bar', (
+    WidgetTester tester,
+  ) async {
+    const statusBarHeight = 47.0;
+    tester.view.padding = FakeViewPadding(
+      top: statusBarHeight * tester.view.devicePixelRatio,
+    );
+    addTearDown(tester.view.resetPadding);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authStateChangesProvider.overrideWith((ref) => Stream.value(null)),
+          currentLocationProvider.overrideWith(
+            (ref) async => const LocationResult.success(
+              GeoCoordinates(latitude: 25.04, longitude: 121.52),
+            ),
+          ),
+          nearbyRestaurantsProvider.overrideWith(
+            (ref, query) async => const NearbySearchResult(
+              restaurants: [
+                NearbyRestaurant(restaurant: _restaurant, distanceMeters: 850),
+              ],
+              radiusKm: 3,
+            ),
+          ),
+          searchCatalogProvider.overrideWith(
+            (ref) => Stream.value(const [_restaurant]),
+          ),
+        ],
+        child: const FoodApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('共享美食'), findsNothing);
+    expect(
+      tester.getTopLeft(find.text('今天想吃什麼？')).dy,
+      greaterThanOrEqualTo(statusBarHeight),
+    );
+  });
+
+  testWidgets('Home radius dropdown shares a row with the distance sort', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final requestedRadii = <double>[];
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authStateChangesProvider.overrideWith((ref) => Stream.value(null)),
+          currentLocationProvider.overrideWith(
+            (ref) async => const LocationResult.success(
+              GeoCoordinates(latitude: 25.04, longitude: 121.52),
+            ),
+          ),
+          nearbyRestaurantsProvider.overrideWith((ref, query) async {
+            requestedRadii.add(query.radiusKm);
+            return NearbySearchResult(
+              restaurants: const [
+                NearbyRestaurant(restaurant: _restaurant, distanceMeters: 850),
+              ],
+              radiusKm: query.radiusKm,
+            );
+          }),
+          searchCatalogProvider.overrideWith(
+            (ref) => Stream.value(const [_restaurant]),
+          ),
+        ],
+        child: const FoodApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ChoiceChip), findsNothing);
+    expect(
+      tester.getCenter(find.text('依距離排序')).dy,
+      closeTo(tester.getCenter(find.text('搜尋範圍')).dy, 4),
+    );
+
+    await tester.tap(find.text('10 公里'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('20 公里').last);
+    await tester.pumpAndSettle();
+
+    expect(requestedRadii, contains(20));
+    expect(find.text('20 公里'), findsOneWidget);
+  });
+
+  testWidgets('Home hides the distance sort when showing latest restaurants', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authStateChangesProvider.overrideWith((ref) => Stream.value(null)),
+          currentLocationProvider.overrideWith(
+            (ref) async => const LocationResult.success(
+              GeoCoordinates(latitude: 25.04, longitude: 121.52),
+            ),
+          ),
+          nearbyRestaurantsProvider.overrideWith(
+            (ref, query) async => NearbySearchResult(
+              restaurants: const [],
+              radiusKm: query.radiusKm,
+            ),
+          ),
+          latestRestaurantsProvider.overrideWith(
+            (ref) => Stream.value(const [_restaurant]),
+          ),
+          searchCatalogProvider.overrideWith(
+            (ref) => Stream.value(const [_restaurant]),
+          ),
+        ],
+        child: const FoodApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('搜尋範圍'), findsOneWidget);
+    expect(find.text('依距離排序'), findsNothing);
+  });
+
   testWidgets('Home displays nearby radius and restaurant distance', (
     WidgetTester tester,
   ) async {
@@ -508,7 +632,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('依距離排序 · 3 公里'), findsOneWidget);
+    expect(find.text('依距離排序'), findsOneWidget);
     expect(find.text('850 公尺'), findsOneWidget);
     expect(find.text('測試食堂'), findsOneWidget);
   });

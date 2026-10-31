@@ -29,83 +29,98 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.watch(searchCatalogProvider);
     final location = ref.watch(currentLocationProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('共享美食')),
-      body: location.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) => _FallbackFeed(
-          message: '無法取得目前位置，先顯示最新店家。',
-          onRetry: () => ref.invalidate(currentLocationProvider),
-        ),
-        data: (result) {
-          final coordinates = result.coordinates;
-          if (coordinates == null) {
-            final actionLabel = _locationActionLabel(result.failure);
-            return _FallbackFeed(
-              message: _locationFailureMessage(result.failure),
-              actionLabel: actionLabel,
-              // 沒有對應的設定頁時不傳 onAction，讓「重新嘗試」退回 onRetry 重新取得位置
-              onAction: actionLabel == null
-                  ? null
-                  : () => _handleLocationAction(ref, result.failure),
-              onRetry: () => ref.invalidate(currentLocationProvider),
+      // 拿掉標題列讓店家有更多空間，內容仍需避開狀態列與瀏海。
+      body: SafeArea(
+        bottom: false,
+        child: location.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stackTrace) => _FallbackFeed(
+            message: '無法取得目前位置，先顯示最新店家。',
+            onRetry: () => ref.invalidate(currentLocationProvider),
+          ),
+          data: (result) {
+            final coordinates = result.coordinates;
+            if (coordinates == null) {
+              final actionLabel = _locationActionLabel(result.failure);
+              return _FallbackFeed(
+                message: _locationFailureMessage(result.failure),
+                actionLabel: actionLabel,
+                // 沒有對應的設定頁時不傳 onAction，讓「重新嘗試」退回 onRetry 重新取得位置
+                onAction: actionLabel == null
+                    ? null
+                    : () => _handleLocationAction(ref, result.failure),
+                onRetry: () => ref.invalidate(currentLocationProvider),
+              );
+            }
+            final query = NearbyRestaurantQuery(
+              origin: coordinates,
+              radiusKm: _radiusKm,
             );
-          }
-          final query = NearbyRestaurantQuery(
-            origin: coordinates,
-            radiusKm: _radiusKm,
-          );
-          final nearbyRestaurants = ref.watch(nearbyRestaurantsProvider(query));
-          return Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1180),
-              child: Column(
-                children: [
-                  _HomeIntro(
-                    optionsKm: _radiusOptionsKm,
-                    selectedRadiusKm: _radiusKm,
-                    onRadiusSelected: (radiusKm) {
-                      setState(() => _radiusKm = radiusKm);
-                    },
-                  ),
-                  Expanded(
-                    child: nearbyRestaurants.when(
-                      loading: () =>
-                          const Center(child: CircularProgressIndicator()),
-                      error: (error, stackTrace) => _FallbackFeed(
-                        message: '附近店家載入失敗，先顯示最新店家。',
-                        onRetry: () =>
-                            ref.invalidate(nearbyRestaurantsProvider(query)),
-                      ),
-                      data: (nearby) => nearby.restaurants.isEmpty
-                          ? _FallbackFeed(
-                              message:
-                                  '${nearby.radiusKm.toInt()} 公里內沒有店家，先顯示最新店家。',
-                              onRetry: () {
-                                ref.invalidate(currentLocationProvider);
-                                ref.invalidate(
-                                  nearbyRestaurantsProvider(query),
-                                );
-                              },
-                            )
-                          : _NearbyFeed(
-                              key: ValueKey(query),
-                              result: nearby,
-                              onRefresh: () async {
-                                ref.invalidate(currentLocationProvider);
-                                ref.invalidate(
-                                  nearbyRestaurantsProvider(query),
-                                );
-                                await ref.read(currentLocationProvider.future);
-                              },
-                            ),
+            final nearbyRestaurants = ref.watch(
+              nearbyRestaurantsProvider(query),
+            );
+            return Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1180),
+                child: Column(
+                  children: [
+                    _HomeIntro(
+                      optionsKm: _radiusOptionsKm,
+                      selectedRadiusKm: _radiusKm,
+                      // 沒有附近店家時改顯示最新店家，此時不是依距離排序。
+                      showDistanceSort:
+                          nearbyRestaurants
+                              .asData
+                              ?.value
+                              .restaurants
+                              .isNotEmpty ??
+                          false,
+                      onRadiusSelected: (radiusKm) {
+                        setState(() => _radiusKm = radiusKm);
+                      },
                     ),
-                  ),
-                ],
+                    Expanded(
+                      child: nearbyRestaurants.when(
+                        loading: () =>
+                            const Center(child: CircularProgressIndicator()),
+                        error: (error, stackTrace) => _FallbackFeed(
+                          message: '附近店家載入失敗，先顯示最新店家。',
+                          onRetry: () =>
+                              ref.invalidate(nearbyRestaurantsProvider(query)),
+                        ),
+                        data: (nearby) => nearby.restaurants.isEmpty
+                            ? _FallbackFeed(
+                                message:
+                                    '${nearby.radiusKm.toInt()} 公里內沒有店家，先顯示最新店家。',
+                                onRetry: () {
+                                  ref.invalidate(currentLocationProvider);
+                                  ref.invalidate(
+                                    nearbyRestaurantsProvider(query),
+                                  );
+                                },
+                              )
+                            : _NearbyFeed(
+                                key: ValueKey(query),
+                                result: nearby,
+                                onRefresh: () async {
+                                  ref.invalidate(currentLocationProvider);
+                                  ref.invalidate(
+                                    nearbyRestaurantsProvider(query),
+                                  );
+                                  await ref.read(
+                                    currentLocationProvider.future,
+                                  );
+                                },
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
@@ -127,11 +142,13 @@ class _HomeIntro extends StatelessWidget {
   const _HomeIntro({
     required this.optionsKm,
     required this.selectedRadiusKm,
+    required this.showDistanceSort,
     required this.onRadiusSelected,
   });
 
   final List<double> optionsKm;
   final double selectedRadiusKm;
+  final bool showDistanceSort;
   final ValueChanged<double> onRadiusSelected;
 
   @override
@@ -154,6 +171,7 @@ class _HomeIntro extends StatelessWidget {
           final selector = _RadiusSelector(
             optionsKm: optionsKm,
             selectedRadiusKm: selectedRadiusKm,
+            showDistanceSort: showDistanceSort,
             onSelected: onRadiusSelected,
           );
 
@@ -179,29 +197,50 @@ class _RadiusSelector extends StatelessWidget {
   const _RadiusSelector({
     required this.optionsKm,
     required this.selectedRadiusKm,
+    required this.showDistanceSort,
     required this.onSelected,
   });
 
   final List<double> optionsKm;
   final double selectedRadiusKm;
+  final bool showDistanceSort;
   final ValueChanged<double> onSelected;
 
   @override
   Widget build(BuildContext context) {
     return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+      spacing: 12,
+      runSpacing: 4,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         Text('搜尋範圍', style: Theme.of(context).textTheme.labelLarge),
-        for (final radiusKm in optionsKm)
-          ChoiceChip(
-            label: Text('${radiusKm.toInt()} 公里'),
-            selected: selectedRadiusKm == radiusKm,
-            showCheckmark: false,
-            onSelected: (selected) {
-              if (selected) onSelected(radiusKm);
-            },
+        DropdownButton<double>(
+          value: selectedRadiusKm,
+          isDense: true,
+          underline: const SizedBox.shrink(),
+          items: [
+            for (final radiusKm in optionsKm)
+              DropdownMenuItem(
+                value: radiusKm,
+                child: Text('${radiusKm.toInt()} 公里'),
+              ),
+          ],
+          onChanged: (radiusKm) {
+            if (radiusKm != null) onSelected(radiusKm);
+          },
+        ),
+        if (showDistanceSort)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.near_me_outlined,
+                size: 17,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(width: 4),
+              Text('依距離排序', style: Theme.of(context).textTheme.labelMedium),
+            ],
           ),
       ],
     );
@@ -220,21 +259,9 @@ class _NearbyFeed extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-          child: Row(
-            children: [
-              Text('附近推薦', style: Theme.of(context).textTheme.titleLarge),
-              const Spacer(),
-              Icon(
-                Icons.near_me_outlined,
-                size: 17,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                '依距離排序 · ${result.radiusKm.toInt()} 公里',
-                style: Theme.of(context).textTheme.labelMedium,
-              ),
-            ],
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text('附近推薦', style: Theme.of(context).textTheme.titleLarge),
           ),
         ),
         Expanded(
