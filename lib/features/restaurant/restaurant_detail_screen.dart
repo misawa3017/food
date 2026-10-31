@@ -131,6 +131,11 @@ class _RestaurantDetailBody extends ConsumerWidget {
     final currentUid = ref.watch(authStateChangesProvider).asData?.value?.uid;
     final canDirectlyUpdate =
         currentUid != null && currentUid == restaurant.createdBy;
+    final canUpdateLocation = canUpdateRestaurantLocation(
+      uid: currentUid,
+      isAdmin: ref.watch(adminStatusProvider).asData?.value ?? false,
+      restaurant: restaurant,
+    );
 
     return CustomScrollView(
       slivers: [
@@ -167,7 +172,7 @@ class _RestaurantDetailBody extends ConsumerWidget {
                     ],
                     _OverviewCard(
                       restaurant: restaurant,
-                      canDirectlyUpdate: canDirectlyUpdate,
+                      canUpdateLocation: canUpdateLocation,
                     ),
                     const SizedBox(height: 20),
                     _ActionRow(restaurant: restaurant),
@@ -399,11 +404,11 @@ class _HeroTag extends StatelessWidget {
 class _OverviewCard extends StatelessWidget {
   const _OverviewCard({
     required this.restaurant,
-    required this.canDirectlyUpdate,
+    required this.canUpdateLocation,
   });
 
   final Restaurant restaurant;
-  final bool canDirectlyUpdate;
+  final bool canUpdateLocation;
 
   @override
   Widget build(BuildContext context) {
@@ -436,13 +441,11 @@ class _OverviewCard extends StatelessWidget {
                 ),
               ],
             ),
-            if (canDirectlyUpdate) ...[
+            if (canUpdateLocation) ...[
               const SizedBox(height: 16),
               Align(
                 alignment: Alignment.centerLeft,
-                child: RestaurantLocationUpdateButton(
-                  restaurantId: restaurant.id,
-                ),
+                child: RestaurantLocationUpdateButton(restaurant: restaurant),
               ),
             ],
             const Padding(

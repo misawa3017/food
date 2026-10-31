@@ -359,6 +359,100 @@ void main() {
     expect(find.text('寫評論'), findsOneWidget);
   });
 
+  group('Restaurant location update button', () {
+    const label = '使用目前位置更新座標';
+    const signedInUser = AuthUser(
+      uid: 'user-1',
+      displayName: '測試使用者',
+      email: 'tester@example.com',
+      photoUrl: null,
+      providerIds: ['google.com'],
+    );
+
+    Future<void> pumpDetail(
+      WidgetTester tester, {
+      required String? createdBy,
+      required bool isAdmin,
+    }) async {
+      final restaurant = Restaurant(
+        id: _restaurant.id,
+        name: _restaurant.name,
+        nameLower: _restaurant.nameLower,
+        address: _restaurant.address,
+        location: _restaurant.location,
+        categories: _restaurant.categories,
+        recommendedDishes: _restaurant.recommendedDishes,
+        coverPhotoUrl: null,
+        photoCount: 0,
+        ratingSum: 0,
+        ratingCount: 0,
+        favoriteCount: 0,
+        status: 'active',
+        mergedIntoRestaurantId: null,
+        createdAt: null,
+        createdBy: createdBy,
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authStateChangesProvider.overrideWith(
+              (ref) => Stream.value(signedInUser),
+            ),
+            adminStatusProvider.overrideWith((ref) => Stream.value(isAdmin)),
+            restaurantProvider.overrideWith(
+              (ref, restaurantId) => Stream.value(restaurant),
+            ),
+            restaurantPhotosProvider.overrideWith(
+              (ref, restaurantId) => Stream.value(const []),
+            ),
+            restaurantReviewsProvider.overrideWith(
+              (ref, restaurantId) => Stream.value(const []),
+            ),
+          ],
+          child: const MaterialApp(
+            home: RestaurantDetailScreen(restaurantId: 'restaurant-1'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> openEditDialog(WidgetTester tester) async {
+      await tester.tap(find.byTooltip('更多操作'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('建議修改資料'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('shows on detail and edit dialog for the recommender', (
+      WidgetTester tester,
+    ) async {
+      await pumpDetail(tester, createdBy: 'user-1', isAdmin: false);
+      expect(find.text(label), findsOneWidget);
+
+      await openEditDialog(tester);
+      expect(find.text(label), findsNWidgets(2));
+    });
+
+    testWidgets('shows on detail and edit dialog for admins', (
+      WidgetTester tester,
+    ) async {
+      await pumpDetail(tester, createdBy: 'someone-else', isAdmin: true);
+      expect(find.text(label), findsOneWidget);
+
+      await openEditDialog(tester);
+      expect(find.text(label), findsNWidgets(2));
+    });
+
+    testWidgets('stays hidden for other users', (WidgetTester tester) async {
+      await pumpDetail(tester, createdBy: 'someone-else', isAdmin: false);
+      expect(find.text(label), findsNothing);
+
+      await openEditDialog(tester);
+      expect(find.text(label), findsNothing);
+    });
+  });
+
   testWidgets('Admin screen displays moderation queues', (
     WidgetTester tester,
   ) async {

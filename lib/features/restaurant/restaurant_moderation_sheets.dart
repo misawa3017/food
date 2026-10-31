@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/restaurant.dart';
+import '../../data/providers/auth_providers.dart';
 import '../../data/providers/contribution_providers.dart';
+import '../../data/providers/moderation_providers.dart';
 import '../../data/repositories/contribution_repository.dart';
+import 'restaurant_location_update_button.dart';
 
 Future<void> showRestaurantEditSheet(
   BuildContext context,
@@ -16,6 +19,11 @@ Future<void> showRestaurantEditSheet(
     text: restaurant.recommendedDishes.join('、'),
   );
   final reason = TextEditingController();
+  final canUpdateLocation = canUpdateRestaurantLocation(
+    uid: ref.read(authStateChangesProvider).asData?.value?.uid,
+    isAdmin: ref.read(adminStatusProvider).asData?.value ?? false,
+    restaurant: restaurant,
+  );
   final submitted = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
@@ -24,6 +32,13 @@ Future<void> showRestaurantEditSheet(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (canUpdateLocation) ...[
+              Align(
+                alignment: Alignment.centerLeft,
+                child: RestaurantLocationUpdateButton(restaurant: restaurant),
+              ),
+              const SizedBox(height: 8),
+            ],
             TextField(
               controller: name,
               decoration: const InputDecoration(labelText: '店家名稱'),
