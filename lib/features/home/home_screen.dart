@@ -69,7 +69,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       optionsKm: _radiusOptionsKm,
                       selectedRadiusKm: _radiusKm,
                       // 沒有附近店家時改顯示最新店家，此時不是依距離排序。
-                      showDistanceSort:
+                      hasNearbyResults:
                           nearbyRestaurants
                               .asData
                               ?.value
@@ -142,13 +142,13 @@ class _HomeIntro extends StatelessWidget {
   const _HomeIntro({
     required this.optionsKm,
     required this.selectedRadiusKm,
-    required this.showDistanceSort,
+    required this.hasNearbyResults,
     required this.onRadiusSelected,
   });
 
   final List<double> optionsKm;
   final double selectedRadiusKm;
-  final bool showDistanceSort;
+  final bool hasNearbyResults;
   final ValueChanged<double> onRadiusSelected;
 
   @override
@@ -171,7 +171,7 @@ class _HomeIntro extends StatelessWidget {
           final selector = _RadiusSelector(
             optionsKm: optionsKm,
             selectedRadiusKm: selectedRadiusKm,
-            showDistanceSort: showDistanceSort,
+            hasNearbyResults: hasNearbyResults,
             onSelected: onRadiusSelected,
           );
 
@@ -197,52 +197,58 @@ class _RadiusSelector extends StatelessWidget {
   const _RadiusSelector({
     required this.optionsKm,
     required this.selectedRadiusKm,
-    required this.showDistanceSort,
+    required this.hasNearbyResults,
     required this.onSelected,
   });
 
   final List<double> optionsKm;
   final double selectedRadiusKm;
-  final bool showDistanceSort;
+  final bool hasNearbyResults;
   final ValueChanged<double> onSelected;
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 12,
-      runSpacing: 4,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        Text('搜尋範圍', style: Theme.of(context).textTheme.labelLarge),
-        DropdownButton<double>(
-          value: selectedRadiusKm,
-          isDense: true,
-          underline: const SizedBox.shrink(),
-          items: [
-            for (final radiusKm in optionsKm)
-              DropdownMenuItem(
-                value: radiusKm,
-                child: Text('${radiusKm.toInt()} 公里'),
-              ),
+    final textTheme = Theme.of(context).textTheme;
+    // 小螢幕放不下時等比縮小，維持在同一行。
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (hasNearbyResults) ...[
+            Text('附近推薦', style: textTheme.titleMedium),
+            const SizedBox(width: 12),
           ],
-          onChanged: (radiusKm) {
-            if (radiusKm != null) onSelected(radiusKm);
-          },
-        ),
-        if (showDistanceSort)
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.near_me_outlined,
-                size: 17,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(width: 4),
-              Text('依距離排序', style: Theme.of(context).textTheme.labelMedium),
+          Text('搜尋範圍', style: textTheme.labelLarge),
+          const SizedBox(width: 12),
+          DropdownButton<double>(
+            value: selectedRadiusKm,
+            isDense: true,
+            underline: const SizedBox.shrink(),
+            items: [
+              for (final radiusKm in optionsKm)
+                DropdownMenuItem(
+                  value: radiusKm,
+                  child: Text('${radiusKm.toInt()} 公里'),
+                ),
             ],
+            onChanged: (radiusKm) {
+              if (radiusKm != null) onSelected(radiusKm);
+            },
           ),
-      ],
+          if (hasNearbyResults) ...[
+            const SizedBox(width: 12),
+            Icon(
+              Icons.near_me_outlined,
+              size: 17,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            const SizedBox(width: 4),
+            Text('依距離排序', style: textTheme.labelMedium),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -255,22 +261,9 @@ class _NearbyFeed extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text('附近推薦', style: Theme.of(context).textTheme.titleLarge),
-          ),
-        ),
-        Expanded(
-          child: _PagedNearbyRestaurantList(
-            nearbyRestaurants: result.restaurants,
-            onRefresh: onRefresh,
-          ),
-        ),
-      ],
+    return _PagedNearbyRestaurantList(
+      nearbyRestaurants: result.restaurants,
+      onRefresh: onRefresh,
     );
   }
 }
