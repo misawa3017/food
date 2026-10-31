@@ -16,6 +16,7 @@ import 'package:food_app/features/account/account_deletion_info_screen.dart';
 import 'package:food_app/features/admin/admin_screen.dart';
 import 'package:food_app/features/restaurant/restaurant_card.dart';
 import 'package:food_app/features/restaurant/restaurant_detail_screen.dart';
+import 'package:food_app/features/search/search_screen.dart';
 
 const _restaurant = Restaurant(
   id: 'restaurant-1',
@@ -329,6 +330,54 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('測試食堂'), findsOneWidget);
+  });
+
+  group('Keyword search distance', () {
+    Future<void> pumpSearch(
+      WidgetTester tester,
+      LocationResult location,
+    ) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authStateChangesProvider.overrideWith((ref) => Stream.value(null)),
+            currentLocationProvider.overrideWith((ref) async => location),
+            paginatedSearchRestaurantsProvider.overrideWith2(
+              _FakePaginatedRestaurantSearchNotifier.new,
+            ),
+          ],
+          child: const MaterialApp(home: SearchScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('shows the distance when location is available', (
+      WidgetTester tester,
+    ) async {
+      await pumpSearch(
+        tester,
+        const LocationResult.success(
+          GeoCoordinates(latitude: 25.05, longitude: 121.52),
+        ),
+      );
+
+      expect(find.text('測試食堂'), findsOneWidget);
+      expect(find.text('1.1 公里'), findsOneWidget);
+    });
+
+    testWidgets('still lists restaurants without location', (
+      WidgetTester tester,
+    ) async {
+      await pumpSearch(
+        tester,
+        const LocationResult.failed(LocationFailure.permissionDenied),
+      );
+
+      expect(find.text('測試食堂'), findsOneWidget);
+      expect(find.textContaining('公里'), findsNothing);
+      expect(find.textContaining('公尺'), findsNothing);
+    });
   });
 
   testWidgets('Restaurant detail displays readonly content', (

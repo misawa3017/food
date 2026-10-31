@@ -528,7 +528,7 @@ class _SearchBanner extends StatelessWidget {
   }
 }
 
-class _SearchResults extends StatelessWidget {
+class _SearchResults extends ConsumerWidget {
   const _SearchResults({
     this.restaurants = const [],
     this.nearbyRestaurants = const [],
@@ -538,10 +538,17 @@ class _SearchResults extends StatelessWidget {
   final List<NearbyRestaurant> nearbyRestaurants;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 關鍵字與最愛結果沒有附帶距離，有定位時才自行計算；沒有座標的店家不顯示距離。
+    final origin = ref.watch(currentLocationProvider).asData?.value.coordinates;
     final items = nearbyRestaurants.isEmpty
         ? restaurants
-              .map((restaurant) => (restaurant: restaurant, distance: null))
+              .map(
+                (restaurant) => (
+                  restaurant: restaurant,
+                  distance: _distanceTo(origin, restaurant),
+                ),
+              )
               .toList(growable: false)
         : nearbyRestaurants
               .map(
@@ -592,6 +599,12 @@ class _SearchResults extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  double? _distanceTo(GeoCoordinates? origin, Restaurant restaurant) {
+    final location = restaurant.location;
+    if (origin == null || location == null) return null;
+    return GeoUtils.distanceMeters(origin, location);
   }
 
   Future<void> _openDirections(
