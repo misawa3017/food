@@ -7,6 +7,8 @@ import '../models/restaurant_photo.dart';
 import '../models/restaurant_review.dart';
 
 class RestaurantRepository {
+  static const _keywordScanBatchSize = 100;
+
   RestaurantRepository({required FirebaseFirestore firestore})
     : _firestore = firestore;
 
@@ -42,16 +44,13 @@ class RestaurantRepository {
     }
 
     if (searchQuery.keyword.isNotEmpty) {
-      query = query
-          .where('nameLower', isGreaterThanOrEqualTo: searchQuery.keyword)
-          .where(
-            'nameLower',
-            isLessThanOrEqualTo: '${searchQuery.keyword}\uf8ff',
-          )
-          .orderBy('nameLower');
-    } else {
-      query = query.orderBy('createdAt', descending: true);
+      return _scanKeywordPage(
+        query.orderBy('nameLower'),
+        searchQuery,
+        previousPage,
+      );
     }
+    query = query.orderBy('createdAt', descending: true);
 
     final lastDocument = previousPage?._lastDocument;
     if (lastDocument != null) {
@@ -69,6 +68,52 @@ class RestaurantRepository {
       hasMore: snapshot.docs.length > searchQuery.limit,
       lastDocument: visibleDocuments.isEmpty ? null : visibleDocuments.last,
     );
+  }
+
+  /// 分批讀取店家並在本機比對店名，直到湊滿一頁或讀完為止。
+  ///
+  /// Firestore 只支援前綴查詢，無法直接搜尋店名中段的文字。
+  Future<RestaurantSearchPage> _scanKeywordPage(
+    Query<Map<String, dynamic>> orderedQuery,
+    RestaurantSearchQuery searchQuery,
+    RestaurantSearchPage? previousPage,
+  ) async {
+    final matches = <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+    var cursor = previousPage?._lastDocument;
+    while (true) {
+      final batchQuery = cursor == null
+          ? orderedQuery
+          : orderedQuery.startAfterDocument(cursor);
+      final snapshot = await batchQuery.limit(_keywordScanBatchSize).get();
+      for (final document in snapshot.docs) {
+        final restaurant = Restaurant.fromMap(document.id, document.data());
+        if (!searchQuery.matchesKeyword(restaurant)) continue;
+        if (matches.length == searchQuery.limit) {
+          return RestaurantSearchPage._(
+            restaurants: _restaurantsFromDocuments(matches),
+            hasMore: true,
+            lastDocument: matches.last,
+          );
+        }
+        matches.add(document);
+      }
+      if (snapshot.docs.length < _keywordScanBatchSize) {
+        return RestaurantSearchPage._(
+          restaurants: _restaurantsFromDocuments(matches),
+          hasMore: false,
+          lastDocument: matches.isEmpty ? null : matches.last,
+        );
+      }
+      cursor = snapshot.docs.last;
+    }
+  }
+
+  List<Restaurant> _restaurantsFromDocuments(
+    Iterable<QueryDocumentSnapshot<Map<String, dynamic>>> documents,
+  ) {
+    return documents
+        .map((document) => Restaurant.fromMap(document.id, document.data()))
+        .toList(growable: false);
   }
 
   /// 依收藏清單讀取目前仍公開的完整店家資料。
@@ -257,9 +302,14 @@ class RestaurantSearchQuery {
     );
   }
 
+  /// 店名包含關鍵字即符合，關鍵字需先經過 [normalized] 處理。
+  bool matchesKeyword(Restaurant restaurant) {
+    return keyword.isEmpty || restaurant.nameLower.contains(keyword);
+  }
+
   /// 將已同步的公開店家目錄依搜尋條件篩選。
   ///
-  /// 名稱規則與 Firestore 的前綴搜尋相同，避免快取結果與原查詢行為不同。
+  /// 名稱規則與 [RestaurantRepository] 的關鍵字搜尋相同，避免兩邊結果不一致。
   List<Restaurant> filterCatalog(Iterable<Restaurant> restaurants) {
     final normalizedQuery = normalized();
     final matches = restaurants
@@ -268,8 +318,7 @@ class RestaurantSearchQuery {
           if (category != null && !restaurant.categories.contains(category)) {
             return false;
           }
-          return normalizedQuery.keyword.isEmpty ||
-              restaurant.nameLower.startsWith(normalizedQuery.keyword);
+          return normalizedQuery.matchesKeyword(restaurant);
         })
         .toList(growable: false);
 
