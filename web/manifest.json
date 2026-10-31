@@ -1,11 +1,11 @@
 {
-    "name": "管吃｜找附近好吃的",
-    "short_name": "管吃",
+    "name": "共享美食｜和大家分享好吃的店",
+    "short_name": "共享美食",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#F7F7F2",
     "theme_color": "#E14F2A",
-    "description": "管吃：找附近好吃的店家。",
+    "description": "共享美食：和大家分享好吃的店。",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

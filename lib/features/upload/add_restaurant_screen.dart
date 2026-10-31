@@ -333,7 +333,7 @@ class _AddRestaurantScreenState extends ConsumerState<AddRestaurantScreen> {
             enabled: !_isSubmitting,
             decoration: const InputDecoration(
               labelText: '店家名稱',
-              hintText: '例如：管吃小館',
+              hintText: '例如：巷口小館',
               prefixIcon: Icon(Icons.storefront_outlined),
             ),
             validator: (value) =>

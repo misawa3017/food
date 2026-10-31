@@ -29,7 +29,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.watch(searchCatalogProvider);
     final location = ref.watch(currentLocationProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('管吃')),
+      appBar: AppBar(title: const Text('共享美食')),
       body: location.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => _FallbackFeed(

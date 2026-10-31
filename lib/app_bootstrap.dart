@@ -80,7 +80,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
                           ),
                           SizedBox(height: 16),
                           Text(
-                            '管吃',
+                            '共享美食',
                             style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.w800,

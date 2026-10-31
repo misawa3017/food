@@ -1,4 +1,4 @@
-# 管吃 iOS 開發說明
+# 共享美食 iOS 開發說明
 
 iOS 版需要在 macOS 上建置。本文件記錄 iOS 專案的設定方式與本機開發流程；上架流程待 Apple Developer 帳號開通後補上。
 

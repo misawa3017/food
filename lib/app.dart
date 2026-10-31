@@ -13,7 +13,7 @@ class FoodApp extends ConsumerWidget {
     final router = ref.watch(appRouterProvider);
 
     return MaterialApp.router(
-      onGenerateTitle: (context) => '管吃',
+      onGenerateTitle: (context) => '共享美食',
       title: '美食通',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,

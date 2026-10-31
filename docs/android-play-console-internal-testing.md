@@ -1,12 +1,12 @@
-# 管吃 Android：Play Console 內部測試流程
+# 共享美食 Android：Play Console 內部測試流程
 
-本文件記錄將「管吃」Android 版送進 Google Play 內部測試的步驟。內部測試不會公開給一般 Play 商店使用者。
+本文件記錄將「共享美食」Android 版送進 Google Play 內部測試的步驟。內部測試不會公開給一般 Play 商店使用者。
 
 ## 目前完成的設定
 
 - Application ID：`com.misawa.food.food_app`
 - 正式 Firebase 專案：`food-prod-9a095`
-- Android 原生顯示名稱：`管吃`
+- Android 原生顯示名稱：`共享美食`
 - 正式簽章 alias：`guanchi-upload`
 - Firebase 已登記 upload key 的 SHA-1 與 SHA-256 指紋。
 - `android/key.properties` 與 `.jks` 均已被 Git 忽略，絕不能提交或分享。
@@ -52,11 +52,11 @@ build/app/outputs/bundle/prodRelease/app-prod-release.aab
 2. 依流程支付開發人員帳戶費用並完成 Android 開發人員身分驗證。
 3. 驗證時確認法定全名、法定地址與網站資料均正確。
 
-## 建立管吃 App
+## 建立共享美食 App
 
 1. 在 Play Console 點選「建立應用程式」。
 2. 預設語言選「繁體中文」。
-3. 名稱填「管吃」，類型選「應用程式」，價格選「免費」。
+3. 名稱填「共享美食」，類型選「應用程式」，價格選「免費」。
 4. 填入聯絡 Email，接受政策與出口聲明後建立。
 5. 第一次上傳 AAB 時接受 **Play App Signing**，建議由 Google 管理 app signing key；本機 `guanchi-upload` 金鑰是 upload key。
 
@@ -82,7 +82,7 @@ build/app/outputs/bundle/prodRelease/app-prod-release.aab
 ## 實機測試清單
 
 - 從 Play 商店的內部測試頁安裝，而非直接安裝 APK。
-- Android 桌面名稱顯示為「管吃」。
+- Android 桌面名稱顯示為「共享美食」。
 - Google 登入、登出與重新登入正常。
 - 定位權限、附近店家與搜尋正常。
 - 新增店家、照片壓縮與照片上傳正常。
