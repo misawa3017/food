@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../data/models/restaurant.dart';
 import 'favorite_button.dart';
 import 'restaurant_image.dart';
@@ -121,8 +122,17 @@ class RestaurantCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      TextButton.icon(
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
                         onPressed: onDirections,
+                        style: FilledButton.styleFrom(
+                          // 外層仍保留 48 的點擊範圍，卡片高度不會因此增加。
+                          minimumSize: const Size(0, 40),
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          textStyle: textTheme.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                         icon: const Icon(Icons.near_me_outlined, size: 17),
                         label: const Text('帶我去'),
                       ),
@@ -153,17 +163,17 @@ class _CategoryLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    // 使用固定的淺底深字，淺色與深色模式下都清楚可讀。
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: colorScheme.primary.withValues(alpha: 0.08),
+        color: AppColors.accentContainer,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text(
         label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: colorScheme.primary,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: AppColors.accent,
           fontWeight: FontWeight.w700,
         ),
       ),

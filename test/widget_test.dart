@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:food_app/app.dart';
+import 'package:food_app/core/theme/app_theme.dart';
 import 'package:food_app/data/models/auth_user.dart';
 import 'package:food_app/data/models/location_result.dart';
 import 'package:food_app/data/models/nearby_restaurant.dart';
@@ -13,6 +14,7 @@ import 'package:food_app/data/providers/moderation_providers.dart';
 import 'package:food_app/data/providers/restaurant_providers.dart';
 import 'package:food_app/features/account/account_deletion_info_screen.dart';
 import 'package:food_app/features/admin/admin_screen.dart';
+import 'package:food_app/features/restaurant/restaurant_card.dart';
 import 'package:food_app/features/restaurant/restaurant_detail_screen.dart';
 
 const _restaurant = Restaurant(
@@ -452,6 +454,62 @@ void main() {
       expect(find.text(label), findsNothing);
     });
   });
+
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'Restaurant card footer stands out in ${brightness.name} mode',
+      (WidgetTester tester) async {
+        var directionsTapped = false;
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              authStateChangesProvider.overrideWith(
+                (ref) => Stream.value(null),
+              ),
+            ],
+            child: MaterialApp(
+              theme: brightness == Brightness.dark
+                  ? AppTheme.dark
+                  : AppTheme.light,
+              home: Scaffold(
+                body: Center(
+                  // 與搜尋頁格狀版面相同的卡片比例，確認內容不會超出。
+                  child: SizedBox(
+                    width: 260,
+                    height: 130 + 160,
+                    child: RestaurantCard(
+                      restaurant: _restaurant,
+                      onTap: () {},
+                      onDirections: () => directionsTapped = true,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        final category = tester.widget<Text>(find.text('日式'));
+        expect(category.style?.color, AppColors.accent);
+        final background =
+            tester
+                    .widget<Container>(
+                      find.ancestor(
+                        of: find.text('日式'),
+                        matching: find.byType(Container),
+                      ),
+                    )
+                    .decoration
+                as BoxDecoration;
+        expect(background.color, AppColors.accentContainer);
+
+        await tester.tap(find.widgetWithText(FilledButton, '帶我去'));
+        expect(directionsTapped, isTrue);
+      },
+    );
+  }
 
   testWidgets('Admin screen displays moderation queues', (
     WidgetTester tester,
