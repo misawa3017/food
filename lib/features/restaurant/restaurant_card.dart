@@ -126,14 +126,22 @@ class RestaurantCard extends StatelessWidget {
                       FilledButton.icon(
                         onPressed: onDirections,
                         style: FilledButton.styleFrom(
-                          // 外層仍保留 48 的點擊範圍，卡片高度不會因此增加。
-                          minimumSize: const Size(0, 40),
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          textStyle: textTheme.labelLarge?.copyWith(
+                          // 外觀與美食類別一致；外層仍保留 48 的點擊範圍。
+                          backgroundColor: AppColors.accentContainer,
+                          foregroundColor: AppColors.accent,
+                          minimumSize: const Size(0, 26),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          textStyle: textTheme.labelMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        icon: const Icon(Icons.near_me_outlined, size: 17),
+                        icon: const Icon(Icons.near_me_outlined, size: 15),
                         label: const Text('帶我去'),
                       ),
                     ],

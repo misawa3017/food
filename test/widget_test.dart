@@ -505,6 +505,18 @@ void main() {
                 as BoxDecoration;
         expect(background.color, AppColors.accentContainer);
 
+        final directions = tester.widget<FilledButton>(
+          find.widgetWithText(FilledButton, '帶我去'),
+        );
+        expect(
+          directions.style?.backgroundColor?.resolve({}),
+          AppColors.accentContainer,
+        );
+        expect(
+          directions.style?.foregroundColor?.resolve({}),
+          AppColors.accent,
+        );
+
         await tester.tap(find.widgetWithText(FilledButton, '帶我去'));
         expect(directionsTapped, isTrue);
       },
