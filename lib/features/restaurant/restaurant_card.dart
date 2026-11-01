@@ -77,11 +77,26 @@ class RestaurantCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    restaurant.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: textTheme.titleMedium,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          restaurant.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.titleMedium,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // 限制寬度，推薦人名稱很長時仍保留店名的顯示空間。
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 130),
+                        child: _MetadataLabel(
+                          icon: Icons.person_outline,
+                          label: '由 ${restaurant.recommenderName} 推薦',
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Wrap(
@@ -92,11 +107,6 @@ class RestaurantCard extends StatelessWidget {
                       if (distanceMeters != null)
                         _DistanceLabel(distanceMeters: distanceMeters!),
                     ],
-                  ),
-                  const SizedBox(height: 2),
-                  _MetadataLabel(
-                    icon: Icons.person_outline,
-                    label: '由 ${restaurant.recommenderName} 推薦',
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -243,7 +253,14 @@ class _MetadataLabel extends StatelessWidget {
           color: iconColor ?? Theme.of(context).colorScheme.primary,
         ),
         const SizedBox(width: 4),
-        Text(label, style: Theme.of(context).textTheme.labelMedium),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelMedium,
+          ),
+        ),
       ],
     );
   }

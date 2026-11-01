@@ -581,7 +581,7 @@ class _SearchResults extends ConsumerWidget {
                 crossAxisCount: columnCount,
                 crossAxisSpacing: spacing,
                 mainAxisSpacing: spacing,
-                childAspectRatio: cardWidth / (cardWidth / 2 + 160),
+                childAspectRatio: cardWidth / (cardWidth / 2 + 138),
               ),
               itemBuilder: (context, index) {
                 final item = items[index];

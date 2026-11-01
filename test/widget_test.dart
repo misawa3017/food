@@ -525,7 +525,7 @@ void main() {
                   // 與搜尋頁格狀版面相同的卡片比例，確認內容不會超出。
                   child: SizedBox(
                     width: 260,
-                    height: 130 + 160,
+                    height: 130 + 138,
                     child: RestaurantCard(
                       restaurant: _restaurant,
                       onTap: () {},
@@ -571,6 +571,68 @@ void main() {
       },
     );
   }
+
+  testWidgets('Restaurant card keeps the recommender beside a long name', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    const longNames = Restaurant(
+      id: 'restaurant-long',
+      name: '這是一間名字非常非常非常非常非常長的測試食堂',
+      nameLower: '這是一間名字非常非常非常非常非常長的測試食堂',
+      address: '台北市測試路1號',
+      location: null,
+      categories: ['東南亞料理', '小吃'],
+      recommendedDishes: [],
+      coverPhotoUrl: null,
+      photoCount: 0,
+      ratingSum: 0,
+      ratingCount: 0,
+      favoriteCount: 0,
+      status: 'active',
+      mergedIntoRestaurantId: null,
+      createdAt: null,
+      recommenderName: '名字也非常非常非常非常非常長的推薦人',
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authStateChangesProvider.overrideWith((ref) => Stream.value(null)),
+        ],
+        child: MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 288,
+                height: 144 + 138,
+                child: RestaurantCard(
+                  restaurant: longNames,
+                  onTap: () {},
+                  onDirections: () {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    final name = find.text(longNames.name);
+    final recommender = find.text('由 ${longNames.recommenderName} 推薦');
+    expect(
+      tester.getCenter(recommender).dy,
+      closeTo(tester.getCenter(name).dy, 4),
+    );
+    expect(tester.getSize(name).width, greaterThan(80));
+    expect(
+      tester.getTopRight(name).dx,
+      lessThan(tester.getTopLeft(recommender).dx),
+    );
+  });
 
   testWidgets('Admin screen displays moderation queues', (
     WidgetTester tester,
