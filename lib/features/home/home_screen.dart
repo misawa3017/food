@@ -159,14 +159,20 @@ class _HomeIntro extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final wide = constraints.maxWidth >= 720;
-          final intro = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('今天想吃什麼？', style: textTheme.headlineSmall),
-              const SizedBox(height: 5),
-              Text('探索你身邊的好味道。', style: textTheme.bodyMedium),
-            ],
+          // 小螢幕放不下時等比縮小，維持在同一行。
+          final intro = FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text('今天想吃什麼？', style: textTheme.headlineSmall),
+                const SizedBox(width: 8),
+                Text('探索你身邊的好味道。', style: textTheme.bodyMedium),
+              ],
+            ),
           );
           final selector = _RadiusSelector(
             optionsKm: optionsKm,

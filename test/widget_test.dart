@@ -725,6 +725,14 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(
+      tester.getBottomLeft(find.text('探索你身邊的好味道。')).dy,
+      closeTo(tester.getBottomLeft(find.text('今天想吃什麼？')).dy, 8),
+    );
+    expect(
+      tester.getTopRight(find.text('探索你身邊的好味道。')).dx,
+      lessThanOrEqualTo(320),
+    );
+    expect(
       tester.getCenter(find.text('依距離排序')).dy,
       closeTo(tester.getCenter(find.text('附近推薦')).dy, 4),
     );
