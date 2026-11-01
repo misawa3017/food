@@ -15,6 +15,7 @@ import {
   HttpsError,
   onCall,
 } from "firebase-functions/v2/https";
+import {commitBulkWrites} from "./bulk_writes";
 import {initializeFirebaseAdmin} from "./firebase_admin";
 
 interface DeleteAccountData {
@@ -301,13 +302,15 @@ async function anonymizeQuery(
   }
 
   const writer = db.bulkWriter();
-  for (const document of snapshot.docs) {
-    writer.update(document.ref, {
-      ...values,
-      anonymizedAt: FieldValue.serverTimestamp(),
-    });
-  }
-  await writer.close();
+  await commitBulkWrites(
+    writer,
+    snapshot.docs.map((document) =>
+      writer.update(document.ref, {
+        ...values,
+        anonymizedAt: FieldValue.serverTimestamp(),
+      }),
+    ),
+  );
 }
 
 function isAllowedPhotoPath(value: unknown): value is string {

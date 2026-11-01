@@ -9,6 +9,7 @@ import {
 } from "firebase-admin/firestore";
 import {getStorage} from "firebase-admin/storage";
 import {CallableRequest, HttpsError, onCall} from "firebase-functions/v2/https";
+import {commitBulkWrites} from "./bulk_writes";
 import {initializeFirebaseAdmin} from "./firebase_admin";
 
 initializeFirebaseAdmin();
@@ -441,10 +442,12 @@ async function synchronizeRecommenderName(
   if (snapshot.empty) return 0;
 
   const writer = db.bulkWriter();
-  for (const restaurant of snapshot.docs) {
-    writer.update(restaurant.ref, {recommenderName});
-  }
-  await writer.close();
+  await commitBulkWrites(
+    writer,
+    snapshot.docs.map((restaurant) =>
+      writer.update(restaurant.ref, {recommenderName}),
+    ),
+  );
   return snapshot.size;
 }
 
@@ -1157,15 +1160,24 @@ async function moveMergedPhotos(sourceId: string, targetId: string) {
   const activePhotos = sourcePhotos.docs
     .filter((photo) => photo.get("status") === "active")
     .slice(0, available);
-  const writer = db.bulkWriter();
-  for (const photo of activePhotos) {
-    writer.set(
-      targetReference.collection("photos").doc(`merged_${sourceId}_${photo.id}`),
-      photo.data(),
-    );
-    writer.delete(photo.ref);
-  }
-  await writer.close();
+  // 全部複製成功才刪除來源，避免單筆複製失敗時照片遺失。
+  const copyWriter = db.bulkWriter();
+  await commitBulkWrites(
+    copyWriter,
+    activePhotos.map((photo) =>
+      copyWriter.set(
+        targetReference
+          .collection("photos")
+          .doc(`merged_${sourceId}_${photo.id}`),
+        photo.data(),
+      ),
+    ),
+  );
+  const deleteWriter = db.bulkWriter();
+  await commitBulkWrites(
+    deleteWriter,
+    activePhotos.map((photo) => deleteWriter.delete(photo.ref)),
+  );
   if (activePhotos.length > 0) {
     const update: Record<string, unknown> = {
       photoCount: FieldValue.increment(activePhotos.length),
@@ -1536,7 +1548,7 @@ export async function handleClaimImportedRestaurantRecommenders(
   }
 
   const writer = db.bulkWriter();
-  let claimedCount = 0;
+  const writes: Promise<unknown>[] = [];
   for (const restaurant of restaurants.docs) {
     const owner = restaurant.get("createdBy");
     if (owner != null && owner !== uid) continue;
@@ -1552,17 +1564,18 @@ export async function handleClaimImportedRestaurantRecommenders(
       importedNameAddressPairs.has(`${normalizeName(name)}|${address}`);
     if (!sameGoogleMapsUrl && !sameNameAndAddress) continue;
 
-    writer.update(restaurant.ref, {
-      createdBy: uid,
-      recommenderName,
-      recommenderClaimedBy: uid,
-      recommenderClaimedAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-    claimedCount += 1;
+    writes.push(
+      writer.update(restaurant.ref, {
+        createdBy: uid,
+        recommenderName,
+        recommenderClaimedBy: uid,
+        recommenderClaimedAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      }),
+    );
   }
-  await writer.close();
-  return {claimedCount, importedPlaceCount: importedPlaces.size};
+  await commitBulkWrites(writer, writes);
+  return {claimedCount: writes.length, importedPlaceCount: importedPlaces.size};
 }
 
 export async function handleUpdateRestaurantContributionLimit(
