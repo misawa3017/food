@@ -79,6 +79,7 @@ android {
             // 發布版啟用 R8 混淆，降低正式 App 被反編譯及還原程式碼的風險。
             isMinifyEnabled = true
             isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
             // prod release 必須使用本機簽章檔；dev release 保留 debug 簽章供內部測試。
             signingConfig = if (isProductionRelease) {
                 signingConfigs.getByName("release")
