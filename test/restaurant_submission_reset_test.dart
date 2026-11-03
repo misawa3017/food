@@ -7,11 +7,13 @@ import 'package:food_app/core/router/app_router.dart';
 import 'package:food_app/data/models/auth_user.dart';
 import 'package:food_app/data/models/contribution_models.dart';
 import 'package:food_app/data/models/location_result.dart';
+import 'package:food_app/data/providers/account_providers.dart';
 import 'package:food_app/data/providers/ad_providers.dart';
 import 'package:food_app/data/providers/auth_providers.dart';
 import 'package:food_app/data/providers/contribution_providers.dart';
 import 'package:food_app/data/providers/location_providers.dart';
 import 'package:food_app/data/providers/restaurant_providers.dart';
+import 'package:food_app/data/repositories/account_repository.dart';
 import 'package:food_app/data/repositories/contribution_repository.dart';
 
 class _SubmissionRepository implements ContributionRepository {
@@ -30,6 +32,14 @@ class _SubmissionRepository implements ContributionRepository {
       photoUploadFailed: photoUploadFailed,
     );
   }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _AccountRepository implements AccountRepository {
+  @override
+  Future<String?> getPublicRecommenderName() async => '測試暱稱';
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -62,6 +72,7 @@ void main() {
               (ref) async =>
                   const LocationResult.failed(LocationFailure.permissionDenied),
             ),
+            accountRepositoryProvider.overrideWithValue(_AccountRepository()),
             latestRestaurantsProvider.overrideWith((ref) => Stream.value([])),
             searchCatalogProvider.overrideWith((ref) => Stream.value([])),
             restaurantProvider.overrideWith((ref, id) => Stream.value(null)),

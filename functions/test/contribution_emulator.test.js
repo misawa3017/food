@@ -113,6 +113,16 @@ test("contribution flow is idempotent and keeps aggregates correct", async (cont
     handleCreateRestaurant(request(createData)),
     (error) =>
       error.code === "failed-precondition" &&
+      error.details === undefined,
+  );
+  await db.collection("users").doc(uid).update({
+    publicRecommenderName: "測試推薦者",
+  });
+
+  await assert.rejects(
+    handleCreateRestaurant(request(createData)),
+    (error) =>
+      error.code === "failed-precondition" &&
       error.details.candidates.length === 1,
   );
 

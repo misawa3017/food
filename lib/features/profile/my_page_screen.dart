@@ -16,6 +16,7 @@ import '../../data/providers/moderation_providers.dart';
 import '../../data/repositories/account_repository.dart';
 import '../../data/repositories/favorite_repository.dart';
 import '../../data/repositories/imported_places_repository.dart';
+import 'recommender_name_dialog.dart';
 
 /// Profile tab. Sign-in state, own submissions, admin entry land in Phase 1/5.
 class MyPageScreen extends ConsumerWidget {
@@ -240,33 +241,10 @@ class _SignedInProfileState extends ConsumerState<_SignedInProfile> {
   }
 
   Future<void> _editRecommenderName(String? currentName) async {
-    final controller = TextEditingController(text: currentName ?? '');
-    final result = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('公開推薦暱稱'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 24,
-          decoration: const InputDecoration(
-            hintText: '例如：Jason 的美食筆記',
-            helperText: '2 至 24 個字元；留白則顯示匿名美食家。',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
-            child: const Text('儲存'),
-          ),
-        ],
-      ),
+    final result = await showRecommenderNameDialog(
+      context,
+      currentName: currentName,
     );
-    controller.dispose();
     if (result == null || !mounted) return;
 
     try {
@@ -374,8 +352,8 @@ class _SignedInProfileState extends ConsumerState<_SignedInProfile> {
           title: const Text('公開推薦暱稱'),
           subtitle: recommenderName.when(
             loading: () => const Text('讀取中…'),
-            error: (error, stackTrace) => const Text('匿名美食家'),
-            data: (name) => Text(name ?? '匿名美食家'),
+            error: (error, stackTrace) => const Text('無法讀取暱稱'),
+            data: (name) => Text(name ?? '尚未設定，新增店家前需要設定'),
           ),
           trailing: const Icon(Icons.edit_outlined),
           onTap: () => _editRecommenderName(recommenderName.asData?.value),

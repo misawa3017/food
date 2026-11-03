@@ -276,6 +276,12 @@ export async function handleCreateRestaurant(
 ) {
   const uid = validateCallable(request);
   const recommenderName = await getRecommenderName(uid);
+  if (recommenderName === anonymousRecommenderName) {
+    throw new HttpsError(
+      "failed-precondition",
+      "請先到「我的」設定公開暱稱，才能新增店家。",
+    );
+  }
   const name = requiredString(request.data.name, "店家名稱", 2, 80);
   const address = requiredString(request.data.address, "地址", 3, 200);
   const googleMapsUrl = optionalHttpsUrl(request.data.googleMapsUrl);
@@ -377,18 +383,17 @@ export async function handleUpdatePublicProfile(
   request: CallableRequest<UpdatePublicProfileData>,
 ) {
   const uid = validateCallable(request);
-  const recommenderName = optionalRecommenderName(request.data.recommenderName);
-  const storedName = recommenderName ?? anonymousRecommenderName;
+  const recommenderName = validRecommenderName(request.data.recommenderName);
   await db.collection("users").doc(uid).set(
     {
-      publicRecommenderName: recommenderName ?? FieldValue.delete(),
+      publicRecommenderName: recommenderName,
       updatedAt: FieldValue.serverTimestamp(),
     },
     {merge: true},
   );
   const updatedRestaurantCount = await synchronizeRecommenderName(
     uid,
-    storedName,
+    recommenderName,
   );
   return {recommenderName, updatedRestaurantCount};
 }
@@ -417,15 +422,17 @@ async function getRecommenderName(uid: string): Promise<string> {
     : anonymousRecommenderName;
 }
 
-function optionalRecommenderName(value: unknown): string | null {
-  if (value == null) return null;
+function validRecommenderName(value: unknown): string {
   if (typeof value !== "string") {
     throw new HttpsError("invalid-argument", "公開暱稱格式不正確。");
   }
   const name = value.trim();
-  if (name.length === 0) return null;
   if (name.length < 2 || name.length > 24) {
     throw new HttpsError("invalid-argument", "公開暱稱需為 2 到 24 個字元。");
+  }
+  // 預設名稱保留給已刪除的帳號，也避免繞過新增店家的暱稱檢查。
+  if (name === anonymousRecommenderName) {
+    throw new HttpsError("invalid-argument", "請換一個公開暱稱。");
   }
   return name;
 }

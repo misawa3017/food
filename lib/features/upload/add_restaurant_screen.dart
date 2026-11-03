@@ -10,9 +10,12 @@ import '../../core/constants/taiwan_administrative_areas.dart';
 import '../../data/models/contribution_models.dart';
 import '../../data/models/imported_place.dart';
 import '../../data/models/restaurant.dart';
+import '../../data/providers/account_providers.dart';
 import '../../data/providers/contribution_providers.dart';
 import '../../data/providers/location_providers.dart';
+import '../../data/repositories/account_repository.dart';
 import '../../data/repositories/contribution_repository.dart';
+import '../profile/recommender_name_dialog.dart';
 
 class AddRestaurantScreen extends ConsumerStatefulWidget {
   const AddRestaurantScreen({super.key, this.importedPlace});
@@ -117,12 +120,15 @@ class _AddRestaurantScreenState extends ConsumerState<AddRestaurantScreen> {
     String? idempotencyKey,
   }) async {
     if (!_canSubmit()) return;
-    final draft = _buildDraft();
     setState(() {
       _isSubmitting = true;
       _progress = 0;
     });
     try {
+      // 確認重複店家時已通過檢查，不必再查一次。
+      if (!duplicateAcknowledged && !await _ensureRecommenderName()) return;
+      if (!mounted) return;
+      final draft = _buildDraft();
       final submission = await _submitDraft(
         draft,
         duplicateAcknowledged: duplicateAcknowledged,
@@ -133,6 +139,35 @@ class _AddRestaurantScreenState extends ConsumerState<AddRestaurantScreen> {
       await _handleContributionError(error);
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  /// 新增店家需要公開暱稱；尚未設定時先要求填寫，取消則不送出。
+  Future<bool> _ensureRecommenderName() async {
+    final accounts = ref.read(accountRepositoryProvider);
+    final String? currentName;
+    try {
+      // 直接查詢後端，避免快取過期，也避免 provider 自動重試讓按鈕久候沒有回應。
+      currentName = await accounts.getPublicRecommenderName();
+    } on AccountDeletionException {
+      if (mounted) _showMessage('無法確認公開暱稱，請稍後再試。');
+      return false;
+    }
+    if (!mounted) return false;
+    if (currentName != null) return true;
+
+    final name = await showRecommenderNameDialog(
+      context,
+      message: '新增店家前，請先設定要公開顯示的推薦暱稱。',
+    );
+    if (name == null || !mounted) return false;
+    try {
+      await accounts.updatePublicRecommenderName(name);
+      ref.invalidate(publicRecommenderNameProvider);
+      return true;
+    } on AccountDeletionException catch (error) {
+      if (mounted) _showMessage(error.message);
+      return false;
     }
   }
 
