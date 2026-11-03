@@ -16,7 +16,12 @@ class MobileAdService implements AdService {
   bool _interstitialLoading = false;
 
   @override
-  bool get isSupported => Platform.isAndroid || Platform.isIOS;
+  bool get isSupported =>
+      _mobileAdsEnabled && (Platform.isAndroid || Platform.isIOS);
+
+  /// 1.0 先不放 App 廣告，等 AdMob 正式廣告單元與隱私申報準備好再開啟。
+  /// 關閉時不初始化 AdMob 與 UMP，也不會跳出追蹤授權視窗。
+  static const _mobileAdsEnabled = false;
 
   @override
   Future<bool> initialize() {
