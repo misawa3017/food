@@ -43,6 +43,8 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>共享美食只在你使用 App 時取得位置，用來依距離排序附近的店家，並在你更新店家位置時記錄目前座標。</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>共享美食會使用你的位置，依距離排序附近的店家，並在你更新店家位置時記錄目前座標。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
