@@ -21,7 +21,7 @@ class AccountDeletionInfoScreen extends ConsumerWidget {
               const Icon(Icons.delete_forever_outlined, size: 64),
               const SizedBox(height: 20),
               Text(
-                '申請刪除美食通帳號',
+                '申請刪除共享美食帳號',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineSmall,
               ),

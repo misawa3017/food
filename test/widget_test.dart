@@ -284,7 +284,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('申請刪除美食通帳號'), findsOneWidget);
+    expect(find.text('申請刪除共享美食帳號'), findsOneWidget);
     expect(find.text('登入後申請刪除'), findsOneWidget);
     expect(find.textContaining('此操作無法復原'), findsOneWidget);
   });

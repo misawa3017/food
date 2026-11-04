@@ -936,7 +936,7 @@ export async function handleSubmitReview(
       rating,
       text,
       authorUid: uid,
-      authorName: typeof token.name === "string" ? token.name : "美食通使用者",
+      authorName: typeof token.name === "string" ? token.name : "共享美食使用者",
       authorPhotoUrl: typeof token.picture === "string" ? token.picture : null,
       status: "active",
       reportCount: previousReview.get("reportCount") ?? 0,

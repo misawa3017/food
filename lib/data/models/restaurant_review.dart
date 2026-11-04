@@ -17,7 +17,7 @@ class RestaurantReview {
       id: id,
       rating: _rating(data['rating']),
       text: data['text'] as String? ?? '',
-      authorName: data['authorName'] as String? ?? '美食通使用者',
+      authorName: data['authorName'] as String? ?? '共享美食使用者',
       authorPhotoUrl: _nullableString(data['authorPhotoUrl']),
       status: data['status'] as String? ?? 'removed',
       createdAt: _dateTimeFromValue(createdAt),

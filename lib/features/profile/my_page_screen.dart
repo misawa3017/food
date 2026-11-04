@@ -291,7 +291,7 @@ class _SignedInProfileState extends ConsumerState<_SignedInProfile> {
         ),
         const SizedBox(height: 16),
         Text(
-          user.displayName ?? '美食通使用者',
+          user.displayName ?? '共享美食使用者',
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.headlineSmall,
         ),

@@ -14,7 +14,7 @@ class FoodApp extends ConsumerWidget {
 
     return MaterialApp.router(
       onGenerateTitle: (context) => '共享美食',
-      title: '美食通',
+      title: '共享美食',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
