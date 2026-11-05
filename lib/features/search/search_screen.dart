@@ -6,6 +6,7 @@ import '../../core/constants/food_categories.dart';
 import '../../core/services/external_navigation_service.dart';
 import '../../core/utils/geo_utils.dart';
 import '../../data/providers/auth_providers.dart';
+import '../../data/providers/block_providers.dart';
 import '../../data/providers/favorite_providers.dart';
 import '../../data/models/location_result.dart';
 import '../../data/models/nearby_restaurant.dart';
@@ -541,7 +542,8 @@ class _SearchResults extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // 關鍵字與最愛結果沒有附帶距離，有定位時才自行計算；沒有座標的店家不顯示距離。
     final origin = ref.watch(currentLocationProvider).asData?.value.coordinates;
-    final items = nearbyRestaurants.isEmpty
+    final blockedUids = ref.watch(blockedUserIdsProvider);
+    final allItems = nearbyRestaurants.isEmpty
         ? restaurants
               .map(
                 (restaurant) => (
@@ -558,6 +560,10 @@ class _SearchResults extends ConsumerWidget {
                 ),
               )
               .toList(growable: false);
+    // 隱藏被封鎖使用者新增的店家。
+    final items = allItems
+        .where((item) => !blockedUids.contains(item.restaurant.createdBy))
+        .toList(growable: false);
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(

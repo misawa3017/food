@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import '../../core/constants/legal_links.dart';
 import '../../core/router/app_router.dart';
 import '../../core/widgets/app_shell.dart';
 import '../../data/providers/auth_providers.dart';
@@ -22,6 +23,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   static const _genericSignInError = '登入失敗，請稍後再試。';
 
   bool _isLoading = false;
+
+  /// 必須先同意使用條款才能登入；條款明訂不容許不當內容與濫用行為。
+  bool _acceptedTerms = false;
 
   Future<void> _signIn(Future<void> Function() action) async {
     setState(() => _isLoading = true);
@@ -137,9 +141,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       '登入後即可推薦餐廳、上傳照片、收藏與管理自己的投稿。',
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
+                    _TermsAgreement(
+                      accepted: _acceptedTerms,
+                      onChanged: _isLoading
+                          ? null
+                          : (value) => setState(() => _acceptedTerms = value),
+                    ),
+                    const SizedBox(height: 16),
                     FilledButton.icon(
-                      onPressed: _isLoading
+                      onPressed: _isLoading || !_acceptedTerms
                           ? null
                           : () => _signIn(
                               () => ref
@@ -152,7 +163,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     if (showAppleSignIn) ...[
                       const SizedBox(height: 12),
                       OutlinedButton.icon(
-                        onPressed: _isLoading
+                        onPressed: _isLoading || !_acceptedTerms
                             ? null
                             : () => _signIn(
                                 () => ref
@@ -174,6 +185,52 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _TermsAgreement extends StatelessWidget {
+  const _TermsAgreement({required this.accepted, required this.onChanged});
+
+  final bool accepted;
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final linkStyle = TextStyle(
+      color: Theme.of(context).colorScheme.primary,
+      decoration: TextDecoration.underline,
+    );
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Checkbox(
+          value: accepted,
+          onChanged: onChanged == null
+              ? null
+              : (value) => onChanged!(value ?? false),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Wrap(
+              children: [
+                const Text('我已閱讀並同意'),
+                GestureDetector(
+                  onTap: () => LegalLinks.open(LegalLinks.terms),
+                  child: Text('使用條款', style: linkStyle),
+                ),
+                const Text('與'),
+                GestureDetector(
+                  onTap: () => LegalLinks.open(LegalLinks.privacy),
+                  child: Text('隱私權政策', style: linkStyle),
+                ),
+                const Text('，並了解共享美食不容許任何不當內容或濫用行為。'),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

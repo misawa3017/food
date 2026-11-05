@@ -8,6 +8,7 @@ import '../../features/admin/admin_screen.dart';
 import '../../features/admin/google_saved_places_import_screen.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/home/home_screen.dart';
+import '../../features/profile/blocked_users_screen.dart';
 import '../../features/profile/my_page_screen.dart';
 import '../../features/restaurant/restaurant_detail_screen.dart';
 import '../../features/search/search_screen.dart';
@@ -22,7 +23,9 @@ const _loginPath = '/login';
 /// 「新增」分頁 `/upload` 不在此列：未登入時由 [SignInRequiredTab]
 /// 在分頁內顯示登入提示，才能保留底部導覽列。
 bool routeRequiresSignIn(String path) {
-  return path == '/admin' || path == '/import-google-saved-places';
+  return path == '/admin' ||
+      path == '/import-google-saved-places' ||
+      path == '/blocked-users';
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -58,6 +61,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const AccountDeletionInfoScreen(),
       ),
       GoRoute(path: '/admin', builder: (context, state) => const AdminScreen()),
+      GoRoute(
+        path: '/blocked-users',
+        builder: (context, state) => const BlockedUsersScreen(),
+      ),
       GoRoute(
         path: '/import-google-saved-places',
         builder: (context, state) => const GoogleSavedPlacesImportScreen(),

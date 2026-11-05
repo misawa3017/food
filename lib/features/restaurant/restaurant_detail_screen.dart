@@ -8,6 +8,7 @@ import '../../data/models/restaurant.dart';
 import '../../data/models/restaurant_photo.dart';
 import '../../data/models/restaurant_review.dart';
 import '../../data/providers/auth_providers.dart';
+import '../../data/providers/block_providers.dart';
 import '../../data/providers/contribution_providers.dart';
 import '../../data/providers/moderation_providers.dart';
 import '../../data/providers/restaurant_providers.dart';
@@ -15,6 +16,7 @@ import '../../data/repositories/contribution_repository.dart';
 import 'duplicate_restaurant_sheet.dart';
 import 'favorite_button.dart';
 import 'photo_upload_button.dart';
+import 'content_safety_actions.dart';
 import 'restaurant_image.dart';
 import 'restaurant_location_update_button.dart';
 import 'restaurant_moderation_sheets.dart';
@@ -129,6 +131,7 @@ class _RestaurantDetailBody extends ConsumerWidget {
     final photos = ref.watch(restaurantPhotosProvider(restaurant.id));
     final reviews = ref.watch(restaurantReviewsProvider(restaurant.id));
     final currentUid = ref.watch(authStateChangesProvider).asData?.value?.uid;
+    final blockedUids = ref.watch(blockedUserIdsProvider);
     final canDirectlyUpdate =
         currentUid != null && currentUid == restaurant.createdBy;
     final canUpdateLocation = canUpdateRestaurantLocation(
@@ -201,12 +204,23 @@ class _RestaurantDetailBody extends ConsumerWidget {
                         icon: Icons.broken_image_outlined,
                         message: '照片載入失敗，請稍後再試。',
                       ),
-                      data: (items) => items.isEmpty
-                          ? const _SectionMessage(
-                              icon: Icons.add_a_photo_outlined,
-                              message: '還沒有照片，成為第一位分享的人吧。',
+                      data: (allItems) {
+                        final items = allItems
+                            .where(
+                              (photo) =>
+                                  !blockedUids.contains(photo.uploadedBy),
                             )
-                          : _PhotoStrip(restaurant: restaurant, photos: items),
+                            .toList(growable: false);
+                        return items.isEmpty
+                            ? const _SectionMessage(
+                                icon: Icons.add_a_photo_outlined,
+                                message: '還沒有照片，成為第一位分享的人吧。',
+                              )
+                            : _PhotoStrip(
+                                restaurant: restaurant,
+                                photos: items,
+                              );
+                      },
                     ),
                     const SizedBox(height: 36),
                     _SectionHeader(
@@ -226,33 +240,55 @@ class _RestaurantDetailBody extends ConsumerWidget {
                         icon: Icons.comment_outlined,
                         message: '評論載入失敗，請稍後再試。',
                       ),
-                      data: (items) => items.isEmpty
-                          ? const _SectionMessage(
-                              icon: Icons.chat_bubble_outline,
-                              message: '目前還沒有評論。',
-                            )
-                          : Column(
-                              children: [
-                                for (final review in items) ...[
-                                  _ReviewTile(
-                                    review: review,
-                                    isOwner: review.id == currentUid,
-                                    onEdit: () => showReviewFormSheet(
-                                      context,
-                                      ref,
-                                      restaurant.id,
-                                      review,
+                      // 評論文件 ID 就是作者的 uid。
+                      data: (allItems) {
+                        final items = allItems
+                            .where((review) => !blockedUids.contains(review.id))
+                            .toList(growable: false);
+                        return items.isEmpty
+                            ? const _SectionMessage(
+                                icon: Icons.chat_bubble_outline,
+                                message: '目前還沒有評論。',
+                              )
+                            : Column(
+                                children: [
+                                  for (final review in items) ...[
+                                    _ReviewTile(
+                                      review: review,
+                                      isOwner: review.id == currentUid,
+                                      onEdit: () => showReviewFormSheet(
+                                        context,
+                                        ref,
+                                        restaurant.id,
+                                        review,
+                                      ),
+                                      onDelete: () => showDeleteReviewDialog(
+                                        context,
+                                        ref,
+                                        restaurant.id,
+                                      ),
+                                      onReport: () => showContentReportDialog(
+                                        context,
+                                        ref,
+                                        target: ReportTarget.review,
+                                        restaurantId: restaurant.id,
+                                        contentId: review.id,
+                                      ),
+                                      onBlock: () => confirmBlockUser(
+                                        context,
+                                        ref,
+                                        blockedUid: review.id,
+                                        displayName: review.authorName,
+                                        target: ReportTarget.review,
+                                        restaurantId: restaurant.id,
+                                        contentId: review.id,
+                                      ),
                                     ),
-                                    onDelete: () => showDeleteReviewDialog(
-                                      context,
-                                      ref,
-                                      restaurant.id,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 10),
+                                    const SizedBox(height: 10),
+                                  ],
                                 ],
-                              ],
-                            ),
+                              );
+                      },
                     ),
                   ],
                 ),
@@ -733,6 +769,17 @@ class _PhotoStrip extends ConsumerWidget {
                     bottom: 10,
                     child: _CoverPhotoBadge(),
                   ),
+                if (!canManagePhoto)
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: _PhotoActionButton(
+                      tooltip: '檢舉或封鎖',
+                      icon: Icons.more_horiz,
+                      onPressed: () =>
+                          _showPhotoSafetyActions(context, ref, photo),
+                    ),
+                  ),
                 if (canManagePhoto)
                   Positioned(
                     top: 6,
@@ -775,6 +822,60 @@ class _PhotoStrip extends ConsumerWidget {
       builder: (context) =>
           _PhotoViewerDialog(photos: photos, initialIndex: initialIndex),
     );
+  }
+
+  Future<void> _showPhotoSafetyActions(
+    BuildContext context,
+    WidgetRef ref,
+    RestaurantPhoto photo,
+  ) async {
+    final uploader = photo.uploadedBy;
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.flag_outlined),
+                title: const Text('檢舉這張照片'),
+                onTap: () => Navigator.pop(context, 'report'),
+              ),
+              if (uploader != null)
+                ListTile(
+                  leading: const Icon(Icons.block),
+                  title: const Text('封鎖上傳者'),
+                  onTap: () => Navigator.pop(context, 'block'),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!context.mounted) return;
+    switch (action) {
+      case 'report':
+        await showContentReportDialog(
+          context,
+          ref,
+          target: ReportTarget.photo,
+          restaurantId: restaurant.id,
+          contentId: photo.id,
+        );
+      case 'block' when uploader != null:
+        await confirmBlockUser(
+          context,
+          ref,
+          blockedUid: uploader,
+          displayName: '這張照片的上傳者',
+          target: ReportTarget.photo,
+          restaurantId: restaurant.id,
+          contentId: photo.id,
+        );
+    }
   }
 
   Future<void> _setCoverPhoto(
@@ -1107,12 +1208,16 @@ class _ReviewTile extends StatelessWidget {
     required this.isOwner,
     required this.onEdit,
     required this.onDelete,
+    required this.onReport,
+    required this.onBlock,
   });
 
   final RestaurantReview review;
   final bool isOwner;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onReport;
+  final VoidCallback onBlock;
 
   @override
   Widget build(BuildContext context) {
@@ -1143,18 +1248,42 @@ class _ReviewTile extends StatelessWidget {
                           style: Theme.of(context).textTheme.titleSmall,
                         ),
                       ),
-                      if (isOwner)
-                        PopupMenuButton<String>(
-                          tooltip: '評論操作',
-                          onSelected: (value) {
-                            if (value == 'edit') onEdit();
-                            if (value == 'delete') onDelete();
-                          },
-                          itemBuilder: (context) => const [
-                            PopupMenuItem(value: 'edit', child: Text('編輯評論')),
-                            PopupMenuItem(value: 'delete', child: Text('刪除評論')),
-                          ],
-                        ),
+                      PopupMenuButton<String>(
+                        tooltip: '評論操作',
+                        onSelected: (value) {
+                          switch (value) {
+                            case 'edit':
+                              onEdit();
+                            case 'delete':
+                              onDelete();
+                            case 'report':
+                              onReport();
+                            case 'block':
+                              onBlock();
+                          }
+                        },
+                        itemBuilder: (context) => isOwner
+                            ? const [
+                                PopupMenuItem(
+                                  value: 'edit',
+                                  child: Text('編輯評論'),
+                                ),
+                                PopupMenuItem(
+                                  value: 'delete',
+                                  child: Text('刪除評論'),
+                                ),
+                              ]
+                            : const [
+                                PopupMenuItem(
+                                  value: 'report',
+                                  child: Text('檢舉評論'),
+                                ),
+                                PopupMenuItem(
+                                  value: 'block',
+                                  child: Text('封鎖此使用者'),
+                                ),
+                              ],
+                      ),
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -1191,14 +1320,19 @@ class _MoreActionsButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final currentUid = ref.watch(authStateChangesProvider).asData?.value?.uid;
+    final creator = restaurant.createdBy;
+    final canBlockCreator = creator != null && creator != currentUid;
     return FloatingActionButton.small(
       tooltip: '更多操作',
       onPressed: () async {
         final action = await showModalBottomSheet<String>(
           context: context,
           showDragHandle: true,
+          isScrollControlled: true,
           builder: (context) => SafeArea(
-            child: Padding(
+            // 選項較多，小螢幕上可以捲動。
+            child: SingleChildScrollView(
               padding: const EdgeInsets.only(bottom: 12),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1218,6 +1352,17 @@ class _MoreActionsButton extends ConsumerWidget {
                     title: const Text('回報重複店家'),
                     onTap: () => Navigator.pop(context, 'duplicate'),
                   ),
+                  ListTile(
+                    leading: const Icon(Icons.flag_outlined),
+                    title: const Text('檢舉不當內容'),
+                    onTap: () => Navigator.pop(context, 'report'),
+                  ),
+                  if (canBlockCreator)
+                    ListTile(
+                      leading: const Icon(Icons.block),
+                      title: const Text('封鎖推薦人'),
+                      onTap: () => Navigator.pop(context, 'block'),
+                    ),
                 ],
               ),
             ),
@@ -1231,6 +1376,22 @@ class _MoreActionsButton extends ConsumerWidget {
             showRestaurantReportDialog(context, ref, restaurant);
           case 'duplicate':
             showDuplicateRestaurantSheet(context, ref, restaurant);
+          case 'report':
+            showContentReportDialog(
+              context,
+              ref,
+              target: ReportTarget.restaurant,
+              restaurantId: restaurant.id,
+            );
+          case 'block' when creator != null:
+            confirmBlockUser(
+              context,
+              ref,
+              blockedUid: creator,
+              displayName: restaurant.recommenderName,
+              target: ReportTarget.restaurant,
+              restaurantId: restaurant.id,
+            );
         }
       },
       child: const Icon(Icons.more_horiz),

@@ -216,6 +216,12 @@ void main() {
 
     expect(find.text('測試使用者'), findsOneWidget);
     expect(find.text('tester@example.com'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('刪除帳號與資料'),
+      300,
+      scrollable: find.byType(Scrollable).last,
+    );
+    expect(find.text('封鎖名單'), findsOneWidget);
     expect(find.text('登出'), findsOneWidget);
     expect(find.text('刪除帳號與資料'), findsOneWidget);
   });
@@ -253,6 +259,11 @@ void main() {
 
     await tester.tap(find.text('我的'));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('刪除帳號與資料'),
+      300,
+      scrollable: find.byType(Scrollable).last,
+    );
     await tester.tap(find.text('刪除帳號與資料'));
     await tester.pumpAndSettle();
 

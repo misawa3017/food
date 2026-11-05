@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/constants/legal_links.dart';
 import '../../core/widgets/app_shell.dart';
 import '../../data/models/auth_user.dart';
 import '../../data/models/favorite_restaurant.dart';
@@ -328,6 +329,25 @@ class _SignedInProfileState extends ConsumerState<_SignedInProfile> {
             subtitle: const Text('管理廣告與資料使用同意'),
             onTap: widget.onPrivacyOptions,
           ),
+        ListTile(
+          leading: const Icon(Icons.block),
+          title: const Text('封鎖名單'),
+          subtitle: const Text('查看或解除封鎖的使用者'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push('/blocked-users'),
+        ),
+        ListTile(
+          leading: const Icon(Icons.description_outlined),
+          title: const Text('使用條款'),
+          trailing: const Icon(Icons.open_in_new),
+          onTap: () => LegalLinks.open(LegalLinks.terms),
+        ),
+        ListTile(
+          leading: const Icon(Icons.privacy_tip_outlined),
+          title: const Text('隱私權政策'),
+          trailing: const Icon(Icons.open_in_new),
+          onTap: () => LegalLinks.open(LegalLinks.privacy),
+        ),
         const Divider(),
         ListTile(
           enabled: !_isSigningOut && !_isDeletingAccount,

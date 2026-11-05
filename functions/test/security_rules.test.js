@@ -17,6 +17,7 @@ const {
   increment,
   query,
   runTransaction,
+  serverTimestamp,
   setDoc,
   updateDoc,
   where,
@@ -218,4 +219,60 @@ test("phase 7 firestore and storage rules enforce client boundaries", async (con
       {contentType: "image/jpeg"},
     ),
   );
+});
+
+test("blocked users are private to the blocker", async (context) => {
+  if (!firestoreHost) {
+    context.skip("Firebase Firestore emulator is required.");
+    return;
+  }
+  const [hostname, port] = firestoreHost.split(":");
+  const testEnvironment = await initializeTestEnvironment({
+    projectId: "food-9a095",
+    firestore: {
+      host: hostname,
+      port: Number(port),
+      rules: fs.readFileSync(
+        path.resolve(__dirname, "../../firebase/firestore.rules"),
+        "utf8",
+      ),
+    },
+  });
+  context.after(async () => {
+    await testEnvironment.clearFirestore();
+    await testEnvironment.cleanup();
+  });
+  const aliceDb = testEnvironment.authenticatedContext("alice").firestore();
+  const bobDb = testEnvironment.authenticatedContext("bob").firestore();
+  const blocked = doc(aliceDb, "users", "alice", "blockedUsers", "troll");
+
+  await assertSucceeds(
+    setDoc(blocked, {displayName: "Troll", blockedAt: serverTimestamp()}),
+  );
+  await assertSucceeds(getDoc(blocked));
+  // 不能封鎖自己、不能寫入其他欄位、也不能用自訂時間。
+  await assertFails(
+    setDoc(doc(aliceDb, "users", "alice", "blockedUsers", "alice"), {
+      displayName: "Me",
+      blockedAt: serverTimestamp(),
+    }),
+  );
+  await assertFails(
+    setDoc(blocked, {
+      displayName: "Troll",
+      blockedAt: serverTimestamp(),
+      note: "extra",
+    }),
+  );
+  await assertFails(
+    setDoc(blocked, {displayName: "Troll", blockedAt: Timestamp.now()}),
+  );
+  // 別人看不到也改不了你的封鎖名單。
+  await assertFails(
+    getDoc(doc(bobDb, "users", "alice", "blockedUsers", "troll")),
+  );
+  await assertFails(
+    deleteDoc(doc(bobDb, "users", "alice", "blockedUsers", "troll")),
+  );
+  await assertSucceeds(deleteDoc(blocked));
 });

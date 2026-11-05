@@ -7,6 +7,7 @@ import '../../core/widgets/ads/web_adsense_home_feed_ad.dart';
 import '../../data/models/location_result.dart';
 import '../../data/models/nearby_restaurant.dart';
 import '../../data/models/restaurant.dart';
+import '../../data/providers/block_providers.dart';
 import '../../data/providers/location_providers.dart';
 import '../../data/providers/restaurant_providers.dart';
 import '../restaurant/restaurant_card.dart';
@@ -423,7 +424,7 @@ class _InfoBanner extends StatelessWidget {
   }
 }
 
-class _RestaurantList extends StatelessWidget {
+class _RestaurantList extends ConsumerWidget {
   const _RestaurantList({
     this.restaurants = const [],
     this.nearbyRestaurants = const [],
@@ -437,8 +438,9 @@ class _RestaurantList extends StatelessWidget {
   static const _adInsertionIndex = 3;
 
   @override
-  Widget build(BuildContext context) {
-    final items = nearbyRestaurants.isEmpty
+  Widget build(BuildContext context, WidgetRef ref) {
+    final blockedUids = ref.watch(blockedUserIdsProvider);
+    final allItems = nearbyRestaurants.isEmpty
         ? restaurants
               .map((restaurant) => (restaurant: restaurant, distance: null))
               .toList(growable: false)
@@ -450,6 +452,10 @@ class _RestaurantList extends StatelessWidget {
                 ),
               )
               .toList(growable: false);
+    // 隱藏被封鎖使用者新增的店家。
+    final items = allItems
+        .where((item) => !blockedUids.contains(item.restaurant.createdBy))
+        .toList(growable: false);
     final visibleItems = visibleCount == null
         ? items
         : items.take(visibleCount!).toList(growable: false);
