@@ -15,13 +15,10 @@ class MobileAdService implements AdService {
   bool _mobileAdsInitialized = false;
   bool _interstitialLoading = false;
 
+  /// 目前只有 iOS 設定了正式的 AdMob 應用程式與廣告單元；
+  /// Android 的 AdMob 還是測試 ID，先不顯示廣告。
   @override
-  bool get isSupported =>
-      _mobileAdsEnabled && (Platform.isAndroid || Platform.isIOS);
-
-  /// 1.0 先不放 App 廣告，等 AdMob 正式廣告單元與隱私申報準備好再開啟。
-  /// 關閉時不初始化 AdMob 與 UMP，也不會跳出追蹤授權視窗。
-  static const _mobileAdsEnabled = false;
+  bool get isSupported => Platform.isIOS;
 
   @override
   Future<bool> initialize() {
@@ -80,14 +77,16 @@ class MobileAdService implements AdService {
   }
 
   void _loadInterstitial() {
-    if (!_mobileAdsInitialized ||
+    final adUnitId = AdUnits.interstitial;
+    if (adUnitId == null ||
+        !_mobileAdsInitialized ||
         _interstitialLoading ||
         _interstitialAd != null) {
       return;
     }
     _interstitialLoading = true;
     InterstitialAd.load(
-      adUnitId: AdUnits.interstitial,
+      adUnitId: adUnitId,
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {
