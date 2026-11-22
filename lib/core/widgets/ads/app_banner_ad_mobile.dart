@@ -31,24 +31,16 @@ class _LoadedBannerAd extends StatefulWidget {
 
 class _LoadedBannerAdState extends State<_LoadedBannerAd> {
   BannerAd? _bannerAd;
-  bool _loadStarted = false;
-
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // 自適應橫幅需要螢幕寬度，MediaQuery 在 initState 時還不能讀取
-    if (_loadStarted) return;
-    _loadStarted = true;
-    _load(MediaQuery.sizeOf(context).width.truncate());
+  void initState() {
+    super.initState();
+    _load();
   }
 
-  Future<void> _load(int width) async {
-    final size =
-        await AdSize.getLargeAnchoredAdaptiveBannerAdSize(width) ??
-        AdSize.banner;
-    if (!mounted) return;
+  void _load() {
+    // 使用標準精簡橫幅（320x50），避免大型自適應橫幅佔用過多畫面高度
     final ad = BannerAd(
-      size: size,
+      size: AdSize.banner,
       adUnitId: AdUnits.banner,
       request: const AdRequest(),
       listener: BannerAdListener(
@@ -78,6 +70,8 @@ class _LoadedBannerAdState extends State<_LoadedBannerAd> {
     final ad = _bannerAd;
     if (ad == null) return const SizedBox.shrink();
     return Container(
+      width: double.infinity,
+      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         border: Border(
@@ -91,19 +85,10 @@ class _LoadedBannerAdState extends State<_LoadedBannerAd> {
       child: SafeArea(
         top: false,
         bottom: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text('廣告', style: Theme.of(context).textTheme.labelSmall),
-            ),
-            SizedBox(
-              width: ad.size.width.toDouble(),
-              height: ad.size.height.toDouble(),
-              child: AdWidget(ad: ad),
-            ),
-          ],
+        child: SizedBox(
+          width: ad.size.width.toDouble(),
+          height: ad.size.height.toDouble(),
+          child: AdWidget(ad: ad),
         ),
       ),
     );
