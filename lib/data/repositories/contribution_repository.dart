@@ -383,22 +383,32 @@ class ContributionRepository {
   }
 
   Future<Uint8List> _compressJpeg(Uint8List source) async {
+    const maxLongestSide = 1080;
+    const jpegQuality = 70;
+
     final decoded = image_library.decodeImage(source);
     if (decoded == null) {
       throw const ContributionException('選取的圖片無法讀取。');
     }
     final longestSide = max(decoded.width, decoded.height);
-    if (longestSide <= 1600) {
-      return Uint8List.fromList(image_library.encodeJpg(decoded, quality: 80));
+    if (longestSide <= maxLongestSide) {
+      return Uint8List.fromList(
+        image_library.encodeJpg(decoded, quality: jpegQuality),
+      );
     }
-    final resizeWidth = decoded.width >= decoded.height ? 1600 : null;
-    final resizeHeight = decoded.height > decoded.width ? 1600 : null;
+    final resizeWidth = decoded.width >= decoded.height ? maxLongestSide : null;
+    final resizeHeight = decoded.height > decoded.width ? maxLongestSide : null;
+    // 使用區域平均插值（Interpolation.average）縮圖，消除最近鄰插值的鋸齒噪點，
+    // 在維持畫面平滑的同時也能提升 JPEG 壓縮率、節省雲端儲存空間與流量。
     final resized = image_library.copyResize(
       decoded,
       width: resizeWidth,
       height: resizeHeight,
+      interpolation: image_library.Interpolation.average,
     );
-    return Uint8List.fromList(image_library.encodeJpg(resized, quality: 80));
+    return Uint8List.fromList(
+      image_library.encodeJpg(resized, quality: jpegQuality),
+    );
   }
 
   Future<Map<Object?, Object?>> _call(
