@@ -6,8 +6,10 @@ import 'package:food_app/app.dart';
 import 'package:food_app/core/theme/app_theme.dart';
 import 'package:food_app/data/models/auth_user.dart';
 import 'package:food_app/data/models/location_result.dart';
+import 'package:food_app/data/models/moderation_request.dart';
 import 'package:food_app/data/models/nearby_restaurant.dart';
 import 'package:food_app/data/models/restaurant.dart';
+import 'package:food_app/data/models/restaurant_review.dart';
 import 'package:food_app/data/providers/auth_providers.dart';
 import 'package:food_app/data/providers/location_providers.dart';
 import 'package:food_app/data/providers/moderation_providers.dart';
@@ -670,6 +672,56 @@ void main() {
     expect(find.text('資料修正'), findsOneWidget);
     expect(find.text('重複店家'), findsOneWidget);
     expect(find.text('目前沒有待處理項目。'), findsOneWidget);
+  });
+
+  testWidgets('Admin report card shows restaurant name and reported review', (
+    WidgetTester tester,
+  ) async {
+    final report = ModerationRequest.fromMap('report-1', 'report', {
+      'targetType': 'review',
+      'restaurantId': 'restaurant-1',
+      'contentId': 'user-blocked',
+      'reason': '使用者封鎖了這則評論的作者，請檢查是否有不當內容。',
+    });
+    const reportedReview = RestaurantReview(
+      id: 'user-blocked',
+      rating: 1,
+      text: '這是一則被檢舉的評論內容',
+      authorName: '被封鎖作者',
+      authorPhotoUrl: null,
+      status: 'active',
+      createdAt: null,
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          adminStatusProvider.overrideWith((ref) => Stream.value(true)),
+          pendingReportsProvider.overrideWith((ref) => Stream.value([report])),
+          pendingEditRequestsProvider.overrideWith(
+            (ref) => Stream.value(const []),
+          ),
+          pendingMergeRequestsProvider.overrideWith(
+            (ref) => Stream.value(const []),
+          ),
+          restaurantProvider.overrideWith(
+            (ref, restaurantId) => Stream.value(_restaurant),
+          ),
+          restaurantReviewsProvider.overrideWith(
+            (ref, restaurantId) => Stream.value(const [reportedReview]),
+          ),
+        ],
+        child: const MaterialApp(home: AdminScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('評論檢舉 · 測試食堂'), findsOneWidget);
+    expect(find.text('查看店家'), findsOneWidget);
+    expect(find.textContaining('被封鎖作者'), findsOneWidget);
+    expect(find.text('這是一則被檢舉的評論內容'), findsOneWidget);
+    expect(find.text('保留內容（駁回檢舉）'), findsOneWidget);
+    expect(find.text('下架此評論'), findsOneWidget);
   });
 
   testWidgets('Home has no title bar and stays below the status bar', (

@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../data/models/moderation_request.dart';
 import '../../data/models/restaurant.dart';
 import '../../data/models/restaurant_photo.dart';
+import '../../data/models/restaurant_review.dart';
 import '../../data/providers/contribution_providers.dart';
 import '../../data/providers/moderation_providers.dart';
 import '../../data/providers/restaurant_providers.dart';
 import '../../data/repositories/contribution_repository.dart';
 import '../../data/repositories/restaurant_repository.dart';
+import '../restaurant/restaurant_detail_screen.dart';
 import '../restaurant/restaurant_image.dart';
 
 class _EditControllers {
@@ -387,9 +390,9 @@ class _RestaurantManagementState extends ConsumerState<_RestaurantManagement> {
           .claimRestaurantRecommender(restaurant.id);
       ref.invalidate(searchRestaurantsProvider(_query));
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已設為你推薦的店家。')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('已設為你推薦的店家。')));
       }
     } on ContributionException catch (error) {
       if (mounted) {
@@ -428,9 +431,9 @@ class _RestaurantManagementState extends ConsumerState<_RestaurantManagement> {
           .claimImportedRestaurantRecommenders();
       ref.invalidate(searchRestaurantsProvider(_query));
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('已將 $count 家匯入店家設為你推薦。')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('已將 $count 家匯入店家設為你推薦。')));
       }
     } on ContributionException catch (error) {
       if (mounted) {
@@ -898,6 +901,31 @@ class _RequestList extends ConsumerWidget {
     ModerationRequest request,
     bool approve,
   ) async {
+    if (approve && request.type == 'report') {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(_approveActionLabel(request)),
+          content: Text(_approveConfirmMessage(request)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(dialogContext).colorScheme.error,
+                foregroundColor: Theme.of(dialogContext).colorScheme.onError,
+              ),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: Text(_approveActionLabel(request)),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !context.mounted) return;
+    }
+
     try {
       if (functionName == 'mergeRestaurants') {
         await ref
@@ -913,9 +941,12 @@ class _RequestList extends ConsumerWidget {
             );
       }
       if (context.mounted) {
+        final message = request.type == 'report'
+            ? (approve ? '已下架被檢舉的內容。' : '已保留內容並將檢舉結案。')
+            : (approve ? '已核准。' : '已拒絕。');
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(approve ? '已核准。' : '已拒絕。')));
+        ).showSnackBar(SnackBar(content: Text(message)));
       }
     } on ContributionException catch (error) {
       if (context.mounted) {
@@ -937,32 +968,488 @@ class _RequestList extends ConsumerWidget {
               itemCount: items.length,
               itemBuilder: (context, index) {
                 final item = items[index];
-                return Card(
-                  margin: const EdgeInsets.all(8),
-                  child: ListTile(
-                    title: Text('${item.type} · ${item.restaurantId}'),
-                    subtitle: Text(
-                      item.reason.isEmpty ? item.data.toString() : item.reason,
-                    ),
-                    trailing: Wrap(
-                      children: [
-                        if (canReject)
-                          IconButton(
-                            tooltip: '拒絕',
-                            onPressed: () => _review(context, ref, item, false),
-                            icon: const Icon(Icons.close),
-                          ),
-                        IconButton(
-                          tooltip: '核准',
-                          onPressed: () => _review(context, ref, item, true),
-                          icon: const Icon(Icons.check),
-                        ),
-                      ],
-                    ),
-                  ),
+                return _ModerationRequestCard(
+                  request: item,
+                  canReject: canReject,
+                  onReject: () => _review(context, ref, item, false),
+                  onApprove: () => _review(context, ref, item, true),
                 );
               },
             ),
+    );
+  }
+}
+
+String _requestTypeLabel(ModerationRequest request) {
+  if (request.type == 'report') {
+    switch (request.targetType) {
+      case 'review':
+        return '評論檢舉';
+      case 'photo':
+        return '照片檢舉';
+      case 'restaurant':
+        return '店家檢舉';
+      default:
+        return '內容檢舉';
+    }
+  }
+  if (request.type == 'edit') return '資料修正';
+  if (request.type == 'merge') return '重複店家合併';
+  return request.type;
+}
+
+String _rejectActionLabel(ModerationRequest request) {
+  if (request.type == 'report') return '保留內容（駁回檢舉）';
+  return '拒絕修正';
+}
+
+String _approveActionLabel(ModerationRequest request) {
+  if (request.type == 'report') {
+    switch (request.targetType) {
+      case 'review':
+        return '下架此評論';
+      case 'photo':
+        return '下架此照片';
+      case 'restaurant':
+        return '下架此店家';
+      default:
+        return '下架被檢舉內容';
+    }
+  }
+  if (request.type == 'edit') return '核准並套用修正';
+  if (request.type == 'merge') return '核准並合併店家';
+  return '核准';
+}
+
+String _approveConfirmMessage(ModerationRequest request) {
+  switch (request.targetType) {
+    case 'review':
+      return '核准此檢舉後，該則評論將從店家頁面移除，並重新計算店家評分。確定要下架此評論嗎？';
+    case 'photo':
+      return '核准此檢舉後，該張照片將從店家頁面移除。確定要下架此照片嗎？';
+    case 'restaurant':
+      return '核准此檢舉後，整間店家將從公開搜尋與附近列表下架。確定要下架此店家嗎？';
+    default:
+      return '核准此檢舉後，被檢舉的內容將會下架移除。確定要繼續嗎？';
+  }
+}
+
+class _ModerationRequestCard extends ConsumerWidget {
+  const _ModerationRequestCard({
+    required this.request,
+    required this.canReject,
+    required this.onReject,
+    required this.onApprove,
+  });
+
+  final ModerationRequest request;
+  final bool canReject;
+  final VoidCallback onReject;
+  final VoidCallback onApprove;
+
+  void _openRestaurant(BuildContext context, String restaurantId) {
+    final router = GoRouter.maybeOf(context);
+    if (router != null) {
+      router.push('/restaurants/$restaurantId');
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => RestaurantDetailScreen(restaurantId: restaurantId),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final restaurantAsync = request.restaurantId.isEmpty
+        ? const AsyncValue<Restaurant?>.data(null)
+        : ref.watch(restaurantProvider(request.restaurantId));
+    final restaurant = restaurantAsync.asData?.value;
+    final titleName = restaurant?.name ?? request.restaurantId;
+    final theme = Theme.of(context);
+    final isReport = request.type == 'report';
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${_requestTypeLabel(request)} · $titleName',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        restaurant != null
+                            ? '店家 ID：${request.restaurantId} · ${restaurant.address}'
+                            : '店家 ID：${request.restaurantId}',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                if (request.restaurantId.isNotEmpty)
+                  TextButton.icon(
+                    onPressed: () =>
+                        _openRestaurant(context, request.restaurantId),
+                    icon: const Icon(Icons.open_in_new, size: 18),
+                    label: const Text('查看店家'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '原因：${request.reason.isEmpty ? '（未提供原因）' : request.reason}',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 12),
+            _buildTargetDetails(context, restaurant),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              alignment: WrapAlignment.end,
+              children: [
+                if (canReject)
+                  OutlinedButton.icon(
+                    onPressed: onReject,
+                    icon: const Icon(Icons.check_circle_outline, size: 18),
+                    label: Text(_rejectActionLabel(request)),
+                  ),
+                FilledButton.icon(
+                  style: isReport
+                      ? FilledButton.styleFrom(
+                          backgroundColor: theme.colorScheme.error,
+                          foregroundColor: theme.colorScheme.onError,
+                        )
+                      : null,
+                  onPressed: onApprove,
+                  icon: Icon(
+                    isReport ? Icons.delete_outline : Icons.check,
+                    size: 18,
+                  ),
+                  label: Text(_approveActionLabel(request)),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTargetDetails(BuildContext context, Restaurant? restaurant) {
+    if (request.type == 'report') {
+      switch (request.targetType) {
+        case 'review':
+          return _ReportedReviewPreview(
+            restaurantId: request.restaurantId,
+            reviewId: request.contentId,
+          );
+        case 'photo':
+          return _ReportedPhotoPreview(
+            restaurantId: request.restaurantId,
+            photoId: request.contentId,
+          );
+        case 'restaurant':
+          return _ReportedRestaurantPreview(restaurant: restaurant);
+      }
+    }
+    if (request.type == 'edit') {
+      return _EditChangesPreview(changes: request.changes);
+    }
+    if (request.type == 'merge') {
+      return _MergeTargetPreview(
+        sourceRestaurant: restaurant,
+        sourceRestaurantId: request.restaurantId,
+        targetRestaurantId: request.targetRestaurantId,
+      );
+    }
+    return const SizedBox.shrink();
+  }
+}
+
+/// 顯示被檢舉的評論內容（作者、評分、文字），讓管理員能直接判斷是否違規。
+class _ReportedReviewPreview extends ConsumerWidget {
+  const _ReportedReviewPreview({
+    required this.restaurantId,
+    required this.reviewId,
+  });
+
+  final String restaurantId;
+  final String? reviewId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (restaurantId.isEmpty || reviewId == null) {
+      return const _PreviewBox(
+        title: '被檢舉的評論',
+        child: Text('缺少評論識別碼，請點選「查看店家」檢查評論列表。'),
+      );
+    }
+
+    final reviewsAsync = ref.watch(restaurantReviewsProvider(restaurantId));
+    return _PreviewBox(
+      title: '被檢舉的評論',
+      child: reviewsAsync.when(
+        loading: () => const Text('正在載入評論內容…'),
+        error: (error, stackTrace) => Text('無法讀取評論（評論 ID：$reviewId）。'),
+        data: (reviews) {
+          RestaurantReview? target;
+          for (final item in reviews) {
+            if (item.id == reviewId) {
+              target = item;
+              break;
+            }
+          }
+          if (target == null) {
+            return Text(
+              '找不到這則評論（可能已被作者自行刪除或已下架，評論 ID：$reviewId）。\n'
+              '若已不存在，可直接點選「保留內容（駁回檢舉）」將此單結案。',
+            );
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '作者：${target.authorName} · 評分：${'★' * target.rating}（${target.rating}/5）',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                target.text.trim().isEmpty ? '（此評論僅給星等，沒有填寫文字內容）' : target.text,
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// 顯示被檢舉的照片縮圖，讓管理員能直接檢視照片是否有不當內容。
+class _ReportedPhotoPreview extends ConsumerWidget {
+  const _ReportedPhotoPreview({
+    required this.restaurantId,
+    required this.photoId,
+  });
+
+  final String restaurantId;
+  final String? photoId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (restaurantId.isEmpty || photoId == null) {
+      return const _PreviewBox(
+        title: '被檢舉的照片',
+        child: Text('缺少照片識別碼，請點選「查看店家」檢查照片列表。'),
+      );
+    }
+
+    final photosAsync = ref.watch(restaurantPhotosProvider(restaurantId));
+    return _PreviewBox(
+      title: '被檢舉的照片',
+      child: photosAsync.when(
+        loading: () => const Text('正在載入照片…'),
+        error: (error, stackTrace) => Text('無法讀取照片（照片 ID：$photoId）。'),
+        data: (photos) {
+          RestaurantPhoto? target;
+          for (final item in photos) {
+            if (item.id == photoId) {
+              target = item;
+              break;
+            }
+          }
+          if (target == null) {
+            return Text(
+              '找不到這張照片（可能已被刪除或已下架，照片 ID：$photoId）。\n'
+              '若已不存在，可直接點選「保留內容（駁回檢舉）」將此單結案。',
+            );
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  width: 180,
+                  height: 135,
+                  child: RestaurantImage(imageUrl: target.url),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '照片 ID：${target.id}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// 顯示被檢舉的店家摘要資訊。
+class _ReportedRestaurantPreview extends StatelessWidget {
+  const _ReportedRestaurantPreview({required this.restaurant});
+
+  final Restaurant? restaurant;
+
+  @override
+  Widget build(BuildContext context) {
+    final target = restaurant;
+    if (target == null) {
+      return const _PreviewBox(
+        title: '被檢舉的店家',
+        child: Text('正在載入店家資訊，或該店家已下架。'),
+      );
+    }
+    return _PreviewBox(
+      title: '被檢舉的店家資訊',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('店名：${target.name}（推薦人：${target.recommenderName}）'),
+          const SizedBox(height: 4),
+          Text('地址：${target.address}'),
+          if (target.categories.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text('分類：${target.categories.join('、')}'),
+          ],
+          if (target.recommendedDishes.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text('推薦菜色：${target.recommendedDishes.join('、')}'),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// 顯示資料修正申請的欄位變更內容。
+class _EditChangesPreview extends StatelessWidget {
+  const _EditChangesPreview({required this.changes});
+
+  final Map<String, dynamic> changes;
+
+  @override
+  Widget build(BuildContext context) {
+    if (changes.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final lines = <String>[];
+    if (changes.containsKey('name')) {
+      lines.add('店家名稱 → ${changes['name']}');
+    }
+    if (changes.containsKey('address')) {
+      lines.add('地址 → ${changes['address']}');
+    }
+    if (changes['categories'] is Iterable) {
+      lines.add('分類 → ${(changes['categories'] as Iterable).join('、')}');
+    }
+    if (changes['recommendedDishes'] is Iterable) {
+      lines.add(
+        '推薦菜色 → ${(changes['recommendedDishes'] as Iterable).join('、')}',
+      );
+    }
+    if (changes['amenities'] is Iterable) {
+      lines.add('店家設施 → ${(changes['amenities'] as Iterable).join('、')}');
+    }
+    if (changes.containsKey('googleMapsUrl')) {
+      lines.add('Google Maps 連結 → ${changes['googleMapsUrl']}');
+    }
+    return _PreviewBox(
+      title: '建議修改內容',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final line in lines)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(line),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 顯示重複店家合併申請的來源與目標店家。
+class _MergeTargetPreview extends ConsumerWidget {
+  const _MergeTargetPreview({
+    required this.sourceRestaurant,
+    required this.sourceRestaurantId,
+    required this.targetRestaurantId,
+  });
+
+  final Restaurant? sourceRestaurant;
+  final String sourceRestaurantId;
+  final String? targetRestaurantId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final targetId = targetRestaurantId;
+    final targetRestaurant = targetId == null
+        ? null
+        : ref.watch(restaurantProvider(targetId)).asData?.value;
+    return _PreviewBox(
+      title: '合併店家資訊',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('將被合併下架：${sourceRestaurant?.name ?? sourceRestaurantId}'),
+          const SizedBox(height: 4),
+          Text('保留目標店家：${targetRestaurant?.name ?? targetId ?? '未知'}'),
+        ],
+      ),
+    );
+  }
+}
+
+class _PreviewBox extends StatelessWidget {
+  const _PreviewBox({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: Theme.of(
+              context,
+            ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          child,
+        ],
+      ),
     );
   }
 }
