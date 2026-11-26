@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 
-/// 晨光青綠設計系統共用的色彩 Token。
+/// 暖陽橘綠（呼應 App Icon 橘綠雙色）設計系統共用的色彩 Token。
 abstract final class AppColors {
-  static const accent = Color(0xFF14523C);
-  static const accentSoft = Color(0xFFF1C84B);
-  static const accentContainer = Color(0xFFDDEDE0);
+  static const accent = Color(0xFFEE6016);
+  static const accentSoft = Color(0xFF83B653);
+  static const accentContainer = Color(0xFFFFD8AE);
 
-  static const paperLight = Color(0xFFF3F7F0);
+  static const paperLight = Color(0xFFFFF1E2);
   static const paperRaisedLight = Color(0xFFFFFFFF);
-  static const inkLight = Color(0xFF16382B);
-  static const mutedLight = Color(0xFF63766C);
+  static const inkLight = Color(0xFF104A4C);
+  static const mutedLight = Color(0xFF527370);
 
-  static const paperDark = Color(0xFF10251D);
-  static const paperRaisedDark = Color(0xFF19342A);
-  static const inkDark = Color(0xFFF0F6F0);
+  static const paperDark = Color(0xFF122627);
+  static const paperRaisedDark = Color(0xFF1B3638);
+  static const inkDark = Color(0xFFFFF3E6);
 }
 
 abstract final class AppTheme {

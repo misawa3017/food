@@ -18,6 +18,7 @@ class FoodApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
+      themeMode: ThemeMode.light,
       locale: const Locale('zh', 'TW'),
       supportedLocales: const [Locale('zh', 'TW')],
       localizationsDelegates: const [
